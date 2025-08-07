@@ -1,0 +1,138 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #eef2f7;
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 3rem 1rem;
+  margin: 0;
+}
+
+#app {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 480px;
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+#taskInput {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+#addTaskButton {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 1rem;
+}
+
+#addTaskButton:hover {
+  background-color: #0056b3;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+li {
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  gap: 1rem;
+}
+
+li span {
+  flex: 1;
+  font-size: 1rem;
+  word-break: break-word;
+}
+
+li .actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 80px;
+  justify-content: flex-end;
+}
+
+li input[type='checkbox'] {
+  transform: scale(1.2);
+  cursor: pointer;
+  appearance: auto; /* ensures checkbox shows in all browsers */
+  margin: 0;
+}
+
+li button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #ff4d4f;
+  padding: 0;
+}
+
+li button:hover {
+  color: #d9363e;
+}
+
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #007bff;
+  padding: 0.75rem;
+  z-index: 1000;
+}
+
+nav ul {
+  display: flex;
+  list-style: none;
+  justify-content: center;
+  gap: 2rem;
+  margin: 0;
+  padding: 0;
+}
+
+nav a {
+  color: rgb(0, 0, 0);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+body {
+  padding-top: 4rem; /* prevents navbar from overlapping content */
+}
