@@ -2,18 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ToDo App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vlad Airinei – Portfolio</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app">
-    <h1>📝 My ToDo List</h1>
+  <nav>
+    <ul>
+      <li><a href="#home">🏠 Home</a></li>
+      <li><a href="#projects">📂 Projects</a></li>
+      <li><a href="#contact">📫 Contact</a></li>
+    </ul>
+  </nav>
 
-    <input type="text" id="taskInput" placeholder="What do you need to do?" />
-    <button id="addTaskButton">Add Task</button>
+  <div id="portfolio">
+    <header id="home">
+      <h1>Vlad Airinei — Web Developer Portfolio</h1>
+      <p>Welcome! This is my first TypeScript project — a fully working ToDo app.</p>
+    </header>
 
-    <ul id="taskList"></ul>
+    <section id="projects">
+      <h2>📌 Project: ToDo App</h2>
+      <div id="app">
+        <input type="text" id="taskInput" placeholder="Enter your task..." />
+        <button id="addTaskButton">Add Task</button>
+        <ul id="taskList"></ul>
+      </div>
+    </section>
+
+    <section id="contact">
+      <h2>Contact</h2>
+      <p>Email: vlad.airinei@yahoo.com</p>
+    </section>
+
+    <footer>
+      <p>© 2025 Vlad Airinei</p>
+    </footer>
   </div>
 
   <script type="module" src="dist/main.js"></script>
