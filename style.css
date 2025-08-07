@@ -1,19 +1,129 @@
+/* ===================================
+  Theme Variables (Light & Dark)
+=================================== */
+
+:root {
+  --bg: #eef2f7;
+  --text: #000000;
+  --nav-bg: #007bff;
+  --card-bg: #ffffff;
+  --btn-bg: #007bff;
+  --btn-hover: #0056b3;
+  --footer-bg: #f0f0f0;
+}
+
+[data-theme="dark"] {
+  --bg: #1e1e1e;
+  --text: #ffffff;
+  --nav-bg: #222222;
+  --card-bg: #2a2a2a;
+  --btn-bg: #333333;
+  --btn-hover: #444444;
+  --footer-bg: #121212;
+}
+
+/* ===================================
+  Global Reset & Layout
+=================================== */
+
 * {
   box-sizing: border-box;
 }
 
-body {
-  background: #eef2f7;
-  font-family: 'Segoe UI', sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 3rem 1rem;
+html, body {
+  height: 100%;
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', sans-serif;
 }
 
+/* Layout wrapper for sticky footer */
+.page-wrapper {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1rem;
+}
+
+/* ===================================
+  Navigation Bar
+=================================== */
+
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--nav-bg);
+  padding: 0.75rem 1rem;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-wrapper {
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center; /* centers nav links */
+  align-items: center;
+}
+
+/* Navigation links - centered */
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 2rem;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.nav-links a {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.nav-links a:hover {
+  text-decoration: underline;
+}
+
+/* Theme toggle - pinned to top right */
+#themeToggle {
+  position: absolute;
+  right: 1rem;
+  background-color: var(--btn-bg);
+  color: var(--text);
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+#themeToggle:hover {
+  background-color: var(--btn-hover);
+}
+
+/* Prevent content from hiding under nav */
+body {
+  padding-top: 4rem;
+}
+
+/* ===================================
+  ToDo App Container
+=================================== */
+
 #app {
-  background: white;
+  background: var(--card-bg);
   padding: 2rem;
   border-radius: 16px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
@@ -21,12 +131,14 @@ body {
   max-width: 480px;
 }
 
-h1 {
+/* Headings */
+h1, h2 {
   text-align: center;
-  color: #333;
   margin-bottom: 1.5rem;
+  color: var(--text);
 }
 
+/* Task input & button */
 #taskInput {
   width: 100%;
   padding: 0.75rem;
@@ -40,7 +152,7 @@ h1 {
   width: 100%;
   padding: 0.75rem;
   font-size: 1rem;
-  background-color: #007bff;
+  background-color: var(--btn-bg);
   color: white;
   border: none;
   border-radius: 8px;
@@ -50,9 +162,10 @@ h1 {
 }
 
 #addTaskButton:hover {
-  background-color: #0056b3;
+  background-color: var(--btn-hover);
 }
 
+/* Task list */
 ul {
   list-style: none;
   padding: 0;
@@ -87,7 +200,7 @@ li .actions {
 li input[type='checkbox'] {
   transform: scale(1.2);
   cursor: pointer;
-  appearance: auto; /* ensures checkbox shows in all browsers */
+  appearance: auto;
   margin: 0;
 }
 
@@ -104,59 +217,12 @@ li button:hover {
   color: #d9363e;
 }
 
-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: #007bff;
-  padding: 0.75rem;
-  z-index: 1000;
-}
-
-nav ul {
-  display: flex;
-  list-style: none;
-  justify-content: center;
-  gap: 2rem;
-  margin: 0;
-  padding: 0;
-}
-
-nav a {
-  color: rgb(0, 0, 0);
-  text-decoration: none;
-  font-weight: bold;
-}
-
-nav a:hover {
-  text-decoration: underline;
-}
-
-body {
-  padding-top: 4rem; /* prevents navbar from overlapping content */
-}
-
-html, body {
-  height: 100%;
-  margin: 0;
-}
-
-.page-wrapper {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-main {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  padding: 3rem 1rem;
-}
+/* ===================================
+  Footer
+=================================== */
 
 footer {
   text-align: center;
   padding: 1rem;
-  background: #f0f0f0;
+  background: var(--footer-bg);
 }

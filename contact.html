@@ -3,31 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vlad Airinei – Portfolio</title>
+  <title>Contact – Vlad Airinei</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <nav>
-  <ul>
-    <li><a href="index.html">🏠 Home</a></li>
-    <li><a href="projects.html">📂 Projects</a></li>
-    <li><a href="contact.html">📫 Contact</a></li>
-  </ul>
-  </nav>
+  <div class="page-wrapper">
+    <nav>
+      <div class="nav-wrapper">
+        <ul class="nav-links">
+          <li><a href="index.html">🏠 Home</a></li>
+          <li><a href="projects.html">📂 Projects</a></li>
+          <li><a href="contact.html">📫 Contact</a></li>
+        </ul>
+        <button id="themeToggle">🌓</button>
+      </div>
+    </nav>
 
-  <div id="portfolio">
-       
-
-    <section id="contact">
-      <h2>Contact</h2>
-      <p>Email: vlad.airinei@yahoo.com</p>
-    </section>
+    <main>
+      <section id="contact">
+        <h1>📫 Contact Me</h1>
+        <p>You can reach me via email at: <strong>vlad.airinei@yahoo.com</strong></p>
+        <p>Or just message me on LinkedIn, I’m usually online.</p>
+      </section>
+    </main>
 
     <footer>
       <p>© 2025 Vlad Airinei</p>
     </footer>
   </div>
 
-  <script type="module" src="dist/main.js"></script>
+  <script src="theme.js"></script>
 </body>
 </html>
