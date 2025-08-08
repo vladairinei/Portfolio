@@ -6,12 +6,6 @@ function setTheme(theme) {
   localStorage.setItem("theme", theme);
 }
 
-function toggleTheme() {
-  const current = document.documentElement.getAttribute("data-theme");
-  const newTheme = current === "dark" ? "light" : "dark";
-  setTheme(newTheme);
-}
-
 function loadInitialTheme() {
   const saved = localStorage.getItem("theme");
   if (saved) {
@@ -23,8 +17,10 @@ function loadInitialTheme() {
   }
 }
 
-// Load theme on page load
-loadInitialTheme();
+toggleBtn.addEventListener("click", () => {
+  const current = document.documentElement.getAttribute("data-theme");
+  const newTheme = current === "dark" ? "light" : "dark";
+  setTheme(newTheme);
+});
 
-// Add event listener to toggle
-toggleBtn?.addEventListener("click", toggleTheme);
+loadInitialTheme();

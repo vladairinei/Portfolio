@@ -1,3 +1,4 @@
+"use strict";
 // Get DOM elements
 const taskInput = document.getElementById('taskInput');
 const addTaskButton = document.getElementById('addTaskButton');
@@ -76,5 +77,4 @@ taskInput.addEventListener('keypress', (event) => {
 });
 // Initial render
 renderTasks();
-export {};
 //# sourceMappingURL=main.js.map

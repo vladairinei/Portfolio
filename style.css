@@ -3,21 +3,21 @@
 =================================== */
 
 :root {
-  --bg: #eef2f7;
+  --bg: #ffffff;
   --text: #000000;
-  --nav-bg: #007bff;
+  --nav-bg: #e0e0e0;
   --card-bg: #ffffff;
-  --btn-bg: #007bff;
-  --btn-hover: #0056b3;
-  --footer-bg: #f0f0f0;
+  --btn-bg: #dcdcdc;
+  --btn-hover: #cccccc;
+  --footer-bg: #f2f2f2;
 }
 
 [data-theme="dark"] {
   --bg: #1e1e1e;
-  --text: #ffffff;
-  --nav-bg: #222222;
+  --text: #f0f0f0;
+  --nav-bg: #2a2a2a;
   --card-bg: #2a2a2a;
-  --btn-bg: #333333;
+  --btn-bg: #3a3a3a;
   --btn-hover: #444444;
   --footer-bg: #121212;
 }
@@ -38,7 +38,10 @@ html, body {
   font-family: 'Segoe UI', sans-serif;
 }
 
-/* Layout wrapper for sticky footer */
+body {
+  padding-top: 4rem; /* Prevent content under nav */
+}
+
 .page-wrapper {
   min-height: 100%;
   display: flex;
@@ -49,6 +52,8 @@ main {
   flex: 1;
   display: flex;
   justify-content: center;
+  align-items: center;
+  text-align: center;
   padding: 3rem 1rem;
 }
 
@@ -87,13 +92,18 @@ nav {
 
 .nav-links a {
   color: var(--text);
-  text-decoration: none;
+  background-color: transparent;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  transition: background 0.3s ease;
   font-weight: bold;
   font-size: 1rem;
+  text-decoration: none;
 }
 
 .nav-links a:hover {
-  text-decoration: underline;
+  background-color: var(--btn-hover);
+  text-decoration: none;
 }
 
 /* Theme toggle - pinned to top right */
@@ -113,11 +123,6 @@ nav {
   background-color: var(--btn-hover);
 }
 
-/* Prevent content from hiding under nav */
-body {
-  padding-top: 4rem;
-}
-
 /* ===================================
   ToDo App Container
 =================================== */
@@ -131,7 +136,6 @@ body {
   max-width: 480px;
 }
 
-/* Headings */
 h1, h2 {
   text-align: center;
   margin-bottom: 1.5rem;
@@ -146,6 +150,8 @@ h1, h2 {
   border: 1px solid #ccc;
   border-radius: 8px;
   margin-bottom: 1rem;
+  background: var(--bg);
+  color: var(--text);
 }
 
 #addTaskButton {
@@ -153,7 +159,7 @@ h1, h2 {
   padding: 0.75rem;
   font-size: 1rem;
   background-color: var(--btn-bg);
-  color: white;
+  color: var(--text);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -181,6 +187,10 @@ li {
   justify-content: space-between;
   margin-bottom: 0.5rem;
   gap: 1rem;
+}
+
+[data-theme="dark"] li {
+  background: #333;
 }
 
 li span {
@@ -225,4 +235,5 @@ footer {
   text-align: center;
   padding: 1rem;
   background: var(--footer-bg);
+  color: var(--text);
 }

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Work Tracker – Vlad Airinei</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page-wrapper">
+    <nav>
+      <div class="nav-wrapper">
+        <ul class="nav-links">
+          <li><a href="index.html">🏠 Home</a></li>
+          <li><a href="projects.html">📂 Projects</a></li>
+          <li><a href="contact.html">📫 Contact</a></li>
+        </ul>
+        <button id="themeToggle">🌓</button>
+      </div>
+    </nav>
+
+    <main>
+      <section id="tracker">
+        <h1>🚚 Work Time Tracker</h1>
+
+        <form id="workForm">
+          <label for="workDate">Date:</label>
+          <input type="date" id="workDate" required />
+
+          <label for="dayType">Day type:</label>
+          <select id="dayType">
+            <option value="normal">Normal</option>
+            <option value="vacation">Vacation</option>
+            <option value="sick">Sick Leave</option>
+          </select>
+
+          <div id="timeInputs">
+            <label for="startTime">Start Time:</label>
+            <input type="time" id="startTime" />
+
+            <label for="pauseTime">Pause (minutes):</label>
+            <input type="number" id="pauseTime" min="0" value="0" />
+
+            <label for="endTime">End Time:</label>
+            <input type="time" id="endTime" />
+          </div>
+
+          <button type="submit">Calculate</button>
+        </form>
+
+        <div id="resultBox">
+          <h2>📊 Results</h2>
+          <p><strong>Total Worked Time:</strong> <span id="workedTime">-</span></p>
+          <p><strong>Night Shift Time:</strong> <span id="nightTime">-</span></p>
+          <p><strong>Info:</strong> <span id="infoMessage">-</span></p>
+        </div>
+      </section>
+      <section id="historySection">
+        <h2>📅 Entry History</h2>
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Worked</th>
+                    <th>Night Bonus</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+      </section>
+
+    </main>
+
+    <footer>
+      <p>© 2025 Vlad Airinei</p>
+    </footer>
+  </div>
+
+  <script src="theme.js"></script>
+  <script type="module" src="dist/tracker.js"></script>
+</body>
+</html>
