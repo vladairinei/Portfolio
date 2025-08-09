@@ -11,7 +11,8 @@
       <div class="nav-wrapper">
         <ul class="nav-links">
           <li><a href="index.html">🏠 Home</a></li>
-          <li><a href="projects.html">📂 Projects</a></li>
+          <li><a href="projects.html">📝 ToDoApp</a></li>
+          <li><a href="tracker.html">⏱ Work Tracker</a></li>
           <li><a href="contact.html">📫 Contact</a></li>
         </ul>
         <button id="themeToggle">🌓</button>
@@ -19,12 +20,14 @@
     </nav>
   <main>
   <section id="projects">
-    <h2>📌 Project: ToDo App (TypeScript)</h2>
-    <p>This task manager app was built with TypeScript and vanilla JS.</p>
+    <h2>📝 ToDo App (TypeScript)</h2>
 
-    <div id="app">
-      <input type="text" id="taskInput" placeholder="Enter your task..." />
-      <button id="addTaskButton">Add Task</button>
+    <div id="todoApp" class="todo-card">
+      <div class="input-row">
+        <input type="text" id="taskInput" placeholder="Enter your task..." />
+        <button id="addTaskButton">Add</button>
+      </div>
+
       <ul id="taskList"></ul>
     </div>
   </section>

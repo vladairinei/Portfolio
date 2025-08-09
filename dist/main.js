@@ -28,39 +28,58 @@ function addNewTask() {
     renderTasks();
 }
 function renderTasks() {
+    // Clear list
     taskList.innerHTML = '';
+    if (tasks.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'todo-item';
+        empty.style.justifyContent = 'center';
+        empty.style.opacity = '0.7';
+        empty.textContent = 'No tasks yet — add one above!';
+        taskList.appendChild(empty);
+        return;
+    }
     tasks.forEach((task) => {
         const li = document.createElement('li');
+        li.className = 'todo-item';
+        li.dataset.id = String(task.id);
+        li.setAttribute('role', 'listitem');
         // Task text
         const span = document.createElement('span');
         span.textContent = task.text;
+        span.className = 'todo-text';
         if (task.done) {
             span.style.textDecoration = 'line-through';
             span.style.color = '#888';
         }
-        // Actions container
+        // Actions (right side)
         const actions = document.createElement('div');
         actions.className = 'actions';
-        // Checkbox
+        // Checkbox (mark done)
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = task.done;
-        checkbox.onchange = () => {
+        checkbox.setAttribute('aria-label', task.done ? 'Mark as not done' : 'Mark as done');
+        checkbox.addEventListener('change', () => {
             task.done = checkbox.checked;
             saveTasks();
             renderTasks();
-        };
+        });
         // Delete button
         const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete';
+        deleteBtn.type = 'button';
+        deleteBtn.title = 'Delete task';
+        deleteBtn.setAttribute('aria-label', 'Delete task');
         deleteBtn.textContent = '❌';
-        deleteBtn.onclick = () => {
+        deleteBtn.addEventListener('click', () => {
             tasks = tasks.filter(t => t.id !== task.id);
             saveTasks();
             renderTasks();
-        };
+        });
+        // Assemble
         actions.appendChild(checkbox);
         actions.appendChild(deleteBtn);
-        // Assemble
         li.appendChild(span);
         li.appendChild(actions);
         taskList.appendChild(li);
