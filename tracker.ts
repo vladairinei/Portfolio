@@ -2,14 +2,60 @@
 // Tracker (TypeScript) – Supabase auth + per‑user storage
 // ==============================
 
-// ----------- Helpers -----------
+// ----------- Auth helpers (Supabase is injected via HTML) -----------
+type SBUser = { id: string } | null;
+
+async function signUpWithPassword(email: string, password: string) {
+  const { data, error } = await (window as any).supabase.auth.signUp({ email, password });
+  if (error) throw error;
+  return data;
+}
+
+async function signInWithPassword(email: string, password: string) {
+  const { data, error } = await (window as any).supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data;
+}
+
+async function signInWithEmail(email: string) {
+  const { error } = await (window as any).supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: location.href }
+  });
+  if (error) throw error;
+}
+
+async function sendPasswordReset(email: string) {
+  const { error } = await (window as any).supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: location.origin + location.pathname
+  });
+  if (error) throw error;
+}
+
+async function finishPasswordReset(newPassword: string) {
+  const { data, error } = await (window as any).supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+  return data;
+}
+
+async function getCurrentUser(): Promise<SBUser> {
+  const { data } = await (window as any).supabase.auth.getUser();
+  return data.user ? { id: data.user.id } : null;
+}
+
+function onAuthStateChanged(handler: (u: SBUser) => void) {
+  const supabase = (window as any).supabase;
+  supabase.auth.onAuthStateChange(async () => {
+    handler(await getCurrentUser());
+  });
+}
+
+// ----------- Time utils -----------
 function parseTime(str: string): number {
   const parts = str.split(":");
   const h = Number(parts[0]);
   const m = Number(parts[1]);
-  if (!Number.isFinite(h) || !Number.isFinite(m)) {
-    throw new Error("Invalid time format");
-  }
+  if (!Number.isFinite(h) || !Number.isFinite(m)) throw new Error("Invalid time format");
   return h * 60 + m;
 }
 
@@ -44,29 +90,6 @@ type Entry = {
   workedMinutes: number;
   nightMinutes: number;
 };
-
-type SBUser = { id: string } | null;
-
-// ----------- Auth helpers (Supabase is injected via HTML) -----------
-async function getCurrentUser(): Promise<SBUser> {
-  const { data } = await (window as any).supabase.auth.getUser();
-  return data.user ? { id: data.user.id } : null;
-}
-
-async function signInWithEmail(email: string) {
-  const { error } = await (window as any).supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: location.href }
-  });
-  if (error) throw error;
-}
-
-function onAuthStateChanged(handler: (u: SBUser) => void) {
-  const supabase = (window as any).supabase;
-  supabase.auth.onAuthStateChange(async () => {
-    handler(await getCurrentUser());
-  });
-}
 
 // ----------- Cloud storage (Supabase) -----------
 let currentUserId: string | null = null;
@@ -112,7 +135,7 @@ async function deleteEntryByDate(dateISO: string): Promise<void> {
   if (error) throw error;
 }
 
-// Vacation allowance per year (still local for now; easy to move to DB later)
+// Vacation allowance (local for now)
 function loadAllowance(): number {
   const raw = localStorage.getItem("vacAllowance");
   const n = raw ? parseInt(raw) : 30;
@@ -131,10 +154,8 @@ const workedTime = document.getElementById("workedTime") as HTMLSpanElement;
 const nightTime = document.getElementById("nightTime") as HTMLSpanElement;
 const infoMessage = document.getElementById("infoMessage") as HTMLSpanElement;
 
-// History table (may not exist if you switched to calendar view)
 const historyTable = document.querySelector("#historyTable tbody") as HTMLTableSectionElement | null;
 
-// Summary DOM (separate month + year)
 const monthOnly = document.getElementById("monthOnly") as HTMLSelectElement;
 const yearPicker = document.getElementById("yearPicker") as HTMLInputElement;
 const vacAllowanceInput = document.getElementById("vacAllowance") as HTMLInputElement;
@@ -150,9 +171,6 @@ const sumVacRemaining = document.getElementById("sumVacRemaining") as HTMLSpanEl
 
 // Auth/UI bits
 const loginCard = document.getElementById("loginCard") as HTMLDivElement | null;
-const loginBtn = document.getElementById("loginBtn") as HTMLButtonElement | null;
-const loginEmail = document.getElementById("loginEmail") as HTMLInputElement | null;
-const signOutBtn = document.getElementById("signOutBtn") as HTMLButtonElement | null;
 
 // Date quick controls
 const workDateInput = document.getElementById("workDate") as HTMLInputElement;
@@ -175,7 +193,7 @@ const drawerBody = document.getElementById("drawerBody") as HTMLDivElement | nul
 const drawerEdit = document.getElementById("drawerEdit") as HTMLButtonElement | null;
 const drawerDelete = document.getElementById("drawerDelete") as HTMLButtonElement | null;
 
-// Year dropdown grid (optional; works if present in HTML)
+// Year dropdown grid (optional)
 const yearDropdownBtn = document.getElementById("yearDropdownBtn") as HTMLButtonElement | null;
 const yearDropdown = document.getElementById("yearDropdown") as HTMLDivElement | null;
 const yearLabel = document.getElementById("yearLabel") as HTMLSpanElement | null;
@@ -189,11 +207,14 @@ function setMonthYearToToday(): void {
   const now = new Date();
   const y = String(now.getFullYear());
   const m = String(now.getMonth() + 1).padStart(2, "0");
+
   yearPicker.value = y;
 
-  const idx = Array.from(monthOnly.options).findIndex(o => o.value === m);
-  if (idx >= 0) monthOnly.selectedIndex = idx;
-  monthOnly.value = m;
+  if (monthOnly) {
+    const idx = Array.from(monthOnly.options).findIndex(o => o.value === m);
+    if (idx >= 0) monthOnly.selectedIndex = idx;
+    monthOnly.value = m;
+  }
 
   if (yearLabel) yearLabel.textContent = y;
 }
@@ -207,7 +228,6 @@ async function renderHistory(): Promise<void> {
 
   for (const entry of entries) {
     const row = document.createElement("tr");
-
     const typeLabel =
       entry.type === "normal" ? "Normal" :
       entry.type === "vacation" ? "Vacation" : "Sick Leave";
@@ -222,10 +242,8 @@ async function renderHistory(): Promise<void> {
         <button class="delete-btn" data-date="${entry.date}">🗑️</button>
       </td>
     `;
-
     historyTable.appendChild(row);
 
-    // Delete
     row.querySelector<HTMLButtonElement>(".delete-btn")?.addEventListener("click", async () => {
       await deleteEntryByDate(entry.date);
       await refreshEntries();
@@ -233,7 +251,6 @@ async function renderHistory(): Promise<void> {
       await renderSummary();
     });
 
-    // Edit (prefill form)
     row.querySelector<HTMLButtonElement>(".edit-btn")?.addEventListener("click", () => {
       const formDate = document.getElementById("workDate") as HTMLInputElement;
       const formType = document.getElementById("dayType") as HTMLSelectElement;
@@ -261,12 +278,11 @@ async function renderHistory(): Promise<void> {
 
 // ----------- Summary Rendering (uses entriesCache) -----------
 async function renderSummary(): Promise<void> {
-  // Fallbacks if somehow empty (won't override our forced init)
   if (!yearPicker.value) yearPicker.value = String(new Date().getFullYear());
   if (!monthOnly.value) monthOnly.value = (new Date().getMonth() + 1).toString().padStart(2, "0");
 
-  const monthKey = `${yearPicker.value}-${monthOnly.value}`; // YYYY-MM
-  const yearKey = yearPicker.value;                           // YYYY
+  const monthKey = `${yearPicker.value}-${monthOnly.value}`;
+  const yearKey = yearPicker.value;
 
   const monthEntries = entriesCache.filter(e => e.date.slice(0, 7) === monthKey);
   const yearEntries = entriesCache.filter(e => e.date.slice(0, 4) === yearKey);
@@ -306,11 +322,9 @@ function fmtDate(d: Date): string {
 function parseISO(dateStr: string): Date {
   const parts = dateStr.split("-");
   const y = Number(parts[0]);
-  const m = Number(parts[1]); // 1–12
+  const m = Number(parts[1]);
   const d = Number(parts[2]);
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
-    throw new Error("Invalid date format");
-  }
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) throw new Error("Invalid date format");
   return new Date(y, m - 1, d);
 }
 
@@ -323,23 +337,14 @@ function shiftDate(dateStr: string, deltaDays: number): string {
 // Default date to today if empty
 if (!workDateInput.value) workDateInput.value = fmtDate(new Date());
 
-// Open native date picker (Chromium), or focus fallback
+// Date picker helpers
 openCalendarBtn?.addEventListener("click", () => {
   (workDateInput as any).showPicker?.() ?? workDateInput.focus();
 });
-
-todayBtn?.addEventListener("click", () => {
-  workDateInput.value = fmtDate(new Date());
-});
-yesterdayBtn?.addEventListener("click", () => {
-  workDateInput.value = shiftDate(workDateInput.value, -1);
-});
-minusDayBtn?.addEventListener("click", () => {
-  workDateInput.value = shiftDate(workDateInput.value, -1);
-});
-plusDayBtn?.addEventListener("click", () => {
-  workDateInput.value = shiftDate(workDateInput.value, +1);
-});
+todayBtn?.addEventListener("click", () => { workDateInput.value = fmtDate(new Date()); });
+yesterdayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, -1); });
+minusDayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, -1); });
+plusDayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, +1); });
 
 // Month nav helpers
 function shiftMonth(year: number, month: number, delta: number): { y: number; m: number } {
@@ -377,13 +382,12 @@ yearPicker?.addEventListener("change", () => {
 
 // ----------- Calendar rendering & drawer -----------
 function daysInMonth(year: number, month1to12: number): number {
-  return new Date(year, month1to12, 0).getDate(); // month is 1–12 here
+  return new Date(year, month1to12, 0).getDate();
 }
 function firstWeekdayIndexMonFirst(year: number, month1to12: number): number {
   const d = new Date(year, month1to12 - 1, 1).getDay();
-  return (d + 6) % 7;
+  return (d + 6) % 7; // Mon=0..Sun=6
 }
-
 function entryMapByDate(): Record<string, Entry> {
   const map: Record<string, Entry> = {};
   for (const e of entriesCache) map[e.date] = e;
@@ -415,14 +419,13 @@ function renderCalendar(): void {
 
   calendarGrid.innerHTML = "";
 
-  // Helper to build a day cell
   const makeCell = (dateISO: string, inMonth: boolean) => {
     const cell = document.createElement("button");
     cell.type = "button";
     cell.className = "cal-day";
     if (!inMonth) cell.classList.add("outside");
 
-    const dow = new Date(dateISO).getDay(); // 0=Sun..6=Sat
+    const dow = new Date(dateISO).getDay();
     if (dow === 0 || dow === 6) cell.classList.add("weekend");
     if (dateISO === todayISO) cell.classList.add("today");
 
@@ -439,9 +442,7 @@ function renderCalendar(): void {
     if (e) {
       const type = document.createElement("span");
       type.className = `badge type-${e.type}`;
-      type.textContent =
-        e.type === "normal" ? "Normal" :
-        e.type === "vacation" ? "Vacation" : "Sick";
+      type.textContent = e.type === "normal" ? "Normal" : e.type === "vacation" ? "Vacation" : "Sick";
       badges.appendChild(type);
 
       if (e.type === "normal") {
@@ -465,27 +466,24 @@ function renderCalendar(): void {
     }
 
     cell.appendChild(badges);
-
-    // click → open drawer
     cell.addEventListener("click", () => openDayDrawer(dateISO, e ?? null));
-
     return cell;
   };
 
-  // Leading days
+  // Leading
   for (let i = leading - 1; i >= 0; i--) {
     const day = prevDays - i;
-    const dateISO = `${prevYear}-${String(prevMonth).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    const dateISO = `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     calendarGrid.appendChild(makeCell(dateISO, false));
   }
   // Current month
   for (let d = 1; d <= days; d++) {
-    const dateISO = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const dateISO = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     calendarGrid.appendChild(makeCell(dateISO, true));
   }
-  // Trailing days
+  // Trailing
   for (let d = 1; d <= trailing; d++) {
-    const dateISO = `${nextYear}-${String(nextMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const dateISO = `${nextYear}-${String(nextMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     calendarGrid.appendChild(makeCell(dateISO, false));
   }
 }
@@ -527,7 +525,7 @@ function closeDayDrawer() {
 // Drawer events
 drawerClose?.addEventListener("click", closeDayDrawer);
 dayDrawer?.addEventListener("click", (e) => {
-  if (e.target === dayDrawer) closeDayDrawer(); // click backdrop
+  if (e.target === dayDrawer) closeDayDrawer();
 });
 
 // Drawer actions
@@ -581,41 +579,25 @@ function openYearDropdown() {
   yearDropdownBtn.setAttribute("aria-expanded", "true");
   renderYearGrid();
 }
-
 function closeYearDropdown() {
   if (!yearDropdownBtn || !yearDropdown) return;
   yearDropdown.hidden = true;
   yearDropdownBtn.setAttribute("aria-expanded", "false");
 }
-
 yearDropdownBtn?.addEventListener("click", (e) => {
   e.stopPropagation();
   if (yearDropdown?.hidden) openYearDropdown(); else closeYearDropdown();
 });
-
-prevDecadeBtn?.addEventListener("click", (e) => {
-  e.stopPropagation();
-  baseYear -= 16;
-  renderYearGrid();
-});
-nextDecadeBtn?.addEventListener("click", (e) => {
-  e.stopPropagation();
-  baseYear += 16;
-  renderYearGrid();
-});
-
+prevDecadeBtn?.addEventListener("click", (e) => { e.stopPropagation(); baseYear -= 16; renderYearGrid(); });
+nextDecadeBtn?.addEventListener("click", (e) => { e.stopPropagation(); baseYear += 16; renderYearGrid(); });
 document.addEventListener("click", (e) => {
   if (!yearDropdown || !yearDropdownBtn) return;
   if (!yearDropdown.hidden) {
     const target = e.target as Node;
-    if (!yearDropdown.contains(target) && target !== yearDropdownBtn) {
-      closeYearDropdown();
-    }
+    if (!yearDropdown.contains(target) && target !== yearDropdownBtn) closeYearDropdown();
   }
 });
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeYearDropdown();
-});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeYearDropdown(); });
 
 // ----------- UI Events -----------
 dayType.addEventListener("change", () => {
@@ -628,10 +610,7 @@ form.addEventListener("submit", async (e) => {
   const type = (document.getElementById("dayType") as HTMLSelectElement).value as Entry["type"];
   const date = (document.getElementById("workDate") as HTMLInputElement).value;
 
-  if (!date) {
-    alert("Please choose a date.");
-    return;
-  }
+  if (!date) return alert("Please choose a date.");
 
   if (type !== "normal") {
     const entry: Entry = { date, type, workedMinutes: 480, nightMinutes: 0 };
@@ -639,7 +618,6 @@ form.addEventListener("submit", async (e) => {
     await refreshEntries();
     await renderHistory();
     await renderSummary();
-
     workedTime.textContent = "08:00";
     nightTime.textContent = "00:00";
     infoMessage.textContent = type === "vacation" ? "Vacation day recorded." : "Sick leave recorded.";
@@ -650,10 +628,7 @@ form.addEventListener("submit", async (e) => {
   const endStr = (document.getElementById("endTime") as HTMLInputElement).value;
   const pauseMin = parseInt((document.getElementById("pauseTime") as HTMLInputElement).value) || 0;
 
-  if (!startStr || !endStr) {
-    alert("Please fill in both start and end time.");
-    return;
-  }
+  if (!startStr || !endStr) return alert("Please fill in both start and end time.");
 
   const startMin = parseTime(startStr);
   const endMin = parseTime(endStr);
@@ -663,13 +638,7 @@ form.addEventListener("submit", async (e) => {
 
   const nightMin = calcNightMinutes(startMin, endMin, pauseMin);
 
-  const entry: Entry = {
-    date,
-    type,
-    workedMinutes: totalWorkMin,
-    nightMinutes: nightMin
-  };
-
+  const entry: Entry = { date, type, workedMinutes: totalWorkMin, nightMinutes: nightMin };
   await upsertEntry(entry);
   await refreshEntries();
   await renderHistory();
@@ -682,10 +651,7 @@ form.addEventListener("submit", async (e) => {
 
 saveAllowanceBtn?.addEventListener("click", async () => {
   const n = parseInt(vacAllowanceInput.value);
-  if (!Number.isFinite(n) || n < 0) {
-    alert("Please enter a valid non-negative number.");
-    return;
-  }
+  if (!Number.isFinite(n) || n < 0) return alert("Please enter a valid non-negative number.");
   saveAllowance(n);
   await renderSummary();
 });
@@ -698,18 +664,52 @@ function showLogin(show: boolean) {
 }
 
 function wireLoginUI() {
-  if (loginBtn && loginEmail) {
-    loginBtn.onclick = async () => {
-      const email = loginEmail.value.trim();
-      if (!email) { alert("Enter your email"); return; }
-      try {
-        await signInWithEmail(email);
-        alert("Magic link sent. Check your email.");
-      } catch (e: any) {
-        alert(e?.message ?? "Sign-in failed");
-      }
-    };
-  }
+  const emailEl = document.getElementById("loginEmail") as HTMLInputElement | null;
+  const passEl  = document.getElementById("loginPassword") as HTMLInputElement | null;
+  const signup  = document.getElementById("signupBtn") as HTMLButtonElement | null;
+  const login   = document.getElementById("loginBtn") as HTMLButtonElement | null;
+  const magic   = document.getElementById("magicBtn") as HTMLButtonElement | null;
+  const forgot  = document.getElementById("forgotBtn") as HTMLButtonElement | null;
+
+  if (signup) signup.onclick = async () => {
+    try {
+      const email = (emailEl?.value ?? "").trim();
+      const pass  = (passEl?.value ?? "").trim();
+      if (!email || !pass) return alert("Enter email and password");
+      await signUpWithPassword(email, pass);
+      alert("Account created. Check your email if confirmation is required.");
+    } catch (e: any) { alert(e.message ?? "Sign up failed"); }
+  };
+
+  if (login) login.onclick = async () => {
+    try {
+      const email = (emailEl?.value ?? "").trim();
+      const pass  = (passEl?.value ?? "").trim();
+      if (!email || !pass) return alert("Enter email and password");
+      await signInWithPassword(email, pass);
+      // onAuthStateChange will switch the UI
+    } catch (e: any) { alert(e.message ?? "Sign in failed"); }
+  };
+
+  if (magic) magic.onclick = async () => {
+    try {
+      const email = (emailEl?.value ?? "").trim();
+      if (!email) return alert("Enter your email");
+      await signInWithEmail(email);
+      alert("Magic link sent. Check your email.");
+    } catch (e: any) { alert(e.message ?? "Magic link failed"); }
+  };
+
+  if (forgot) forgot.onclick = async () => {
+    try {
+      const email = (emailEl?.value ?? "").trim();
+      if (!email) return alert("Enter your email");
+      await sendPasswordReset(email);
+      alert("Password reset link sent. Check your email.");
+    } catch (e: any) { alert(e.message ?? "Reset link failed"); }
+  };
+
+  const signOutBtn = document.getElementById("signOutBtn") as HTMLButtonElement | null;
   if (signOutBtn) {
     signOutBtn.onclick = async () => {
       await (window as any).supabase.auth.signOut();
@@ -720,6 +720,20 @@ function wireLoginUI() {
 // ----------- Initial Setup -----------
 async function init() {
   wireLoginUI();
+
+  // Handle password recovery link
+  const hash = location.hash || "";
+  if (hash.includes("type=recovery")) {
+    const newPass = prompt("Set a new password:");
+    if (newPass && newPass.length >= 6) {
+      try {
+        await finishPasswordReset(newPass);
+        alert("Password updated. You are signed in.");
+      } catch (e: any) {
+        alert(e.message ?? "Password update failed");
+      }
+    }
+  }
 
   const user = await getCurrentUser();
   if (!user) {

@@ -24,13 +24,17 @@
       <!-- LOGIN (visible by default) -->
       <section id="loginCard" style="max-width:520px; margin:1rem auto;">
         <h2>Sign in</h2>
-        <p>Get a magic link to your email.</p>
-        <div class="input-row">
+        <div class="input-row" style="display:grid; gap:.5rem;">
           <input id="loginEmail" type="email" placeholder="you@example.com" />
-          <button id="loginBtn" type="button">Send link</button>
+          <input id="loginPassword" type="password" placeholder="Password" />
+          <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+            <button id="signupBtn" type="button">Create account</button>
+            <button id="loginBtn" type="button">Sign in</button>
+            <button id="magicBtn" type="button">Email magic link</button>
+            <button id="forgotBtn" type="button" style="margin-left:auto;">Forgot password</button>
+          </div>
         </div>
       </section>
-
       <!-- APP (hidden until authenticated) -->
       <section id="tracker" style="display:none">
         <h1>🚚 Work Time Tracker</h1>

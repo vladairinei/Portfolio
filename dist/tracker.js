@@ -2,6 +2,33 @@
 // Tracker (TypeScript) – Supabase auth + per‑user storage
 // ==============================
 // ----------- Helpers -----------
+async function signUpWithPassword(email, password) {
+    const { data, error } = await window.supabase.auth.signUp({ email, password });
+    if (error)
+        throw error;
+    // If Confirm Email is ON, user must click the email link before being “confirmed”.
+    return data;
+}
+async function signInWithPassword(email, password) {
+    const { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
+    if (error)
+        throw error;
+    return data;
+}
+async function sendPasswordReset(email) {
+    const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: location.origin + location.pathname // return here after clicking the email link
+    });
+    if (error)
+        throw error;
+}
+// Handle the “reset password” flow after the email link
+async function finishPasswordReset(newPassword) {
+    const { data, error } = await window.supabase.auth.updateUser({ password: newPassword });
+    if (error)
+        throw error;
+    return data;
+}
 function parseTime(str) {
     const parts = str.split(":");
     const h = Number(parts[0]);
@@ -634,22 +661,67 @@ function showLogin(show) {
         appSection.style.display = show ? "none" : "block";
 }
 function wireLoginUI() {
-    if (loginBtn && loginEmail) {
-        loginBtn.onclick = async () => {
-            const email = loginEmail.value.trim();
-            if (!email) {
-                alert("Enter your email");
-                return;
-            }
+    const emailEl = document.getElementById("loginEmail");
+    const passEl = document.getElementById("loginPassword");
+    const signup = document.getElementById("signupBtn");
+    const login = document.getElementById("loginBtn");
+    const magic = document.getElementById("magicBtn");
+    const forgot = document.getElementById("forgotBtn");
+    if (signup)
+        signup.onclick = async () => {
             try {
+                const email = (emailEl?.value ?? "").trim();
+                const pass = (passEl?.value ?? "").trim();
+                if (!email || !pass)
+                    return alert("Enter email and password");
+                await signUpWithPassword(email, pass);
+                alert("Account created. Check your email if confirmation is required.");
+            }
+            catch (e) {
+                alert(e.message ?? "Sign up failed");
+            }
+        };
+    if (login)
+        login.onclick = async () => {
+            try {
+                const email = (emailEl?.value ?? "").trim();
+                const pass = (passEl?.value ?? "").trim();
+                if (!email || !pass)
+                    return alert("Enter email and password");
+                await signInWithPassword(email, pass);
+                // onAuthStateChange will switch the UI
+            }
+            catch (e) {
+                alert(e.message ?? "Sign in failed");
+            }
+        };
+    if (magic)
+        magic.onclick = async () => {
+            try {
+                const email = (emailEl?.value ?? "").trim();
+                if (!email)
+                    return alert("Enter your email");
                 await signInWithEmail(email);
                 alert("Magic link sent. Check your email.");
             }
             catch (e) {
-                alert(e?.message ?? "Sign-in failed");
+                alert(e.message ?? "Magic link failed");
             }
         };
-    }
+    if (forgot)
+        forgot.onclick = async () => {
+            try {
+                const email = (emailEl?.value ?? "").trim();
+                if (!email)
+                    return alert("Enter your email");
+                await sendPasswordReset(email);
+                alert("Password reset link sent. Check your email.");
+            }
+            catch (e) {
+                alert(e.message ?? "Reset link failed");
+            }
+        };
+    const signOutBtn = document.getElementById("signOutBtn");
     if (signOutBtn) {
         signOutBtn.onclick = async () => {
             await window.supabase.auth.signOut();
@@ -659,6 +731,21 @@ function wireLoginUI() {
 // ----------- Initial Setup -----------
 async function init() {
     wireLoginUI();
+    // If user clicked a password reset email link, Supabase creates a session
+    // and we can ask for the new password once (simple prompt).
+    const hash = location.hash || "";
+    if (hash.includes("type=recovery")) {
+        const newPass = prompt("Set a new password:");
+        if (newPass && newPass.length >= 6) {
+            try {
+                await finishPasswordReset(newPass);
+                alert("Password updated. You are signed in.");
+            }
+            catch (e) {
+                alert(e.message ?? "Password update failed");
+            }
+        }
+    }
     const user = await getCurrentUser();
     if (!user) {
         showLogin(true);
