@@ -1,3 +1,6 @@
+// ==============================
+// Tracker (TypeScript) – Supabase auth + per‑user storage
+// ==============================
 // ----------- Helpers -----------
 function parseTime(str) {
     const parts = str.split(":");
@@ -32,20 +35,75 @@ function calcNightMinutes(start, end, pauseMin) {
     }
     return nightMinutes;
 }
-function loadEntries() {
-    const data = localStorage.getItem("entries");
-    return data ? JSON.parse(data) : [];
+// ----------- Auth helpers (Supabase is injected via HTML) -----------
+async function getCurrentUser() {
+    const { data } = await window.supabase.auth.getUser();
+    return data.user ? { id: data.user.id } : null;
 }
-function saveEntry(entry) {
-    const entries = loadEntries();
-    const idx = entries.findIndex(e => e.date === entry.date);
-    if (idx !== -1)
-        entries[idx] = entry;
-    else
-        entries.push(entry);
-    localStorage.setItem("entries", JSON.stringify(entries));
+async function signInWithEmail(email) {
+    const { error } = await window.supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: location.href }
+    });
+    if (error)
+        throw error;
 }
-// Vacation allowance per year (default 30)
+function onAuthStateChanged(handler) {
+    const supabase = window.supabase;
+    supabase.auth.onAuthStateChange(async () => {
+        handler(await getCurrentUser());
+    });
+}
+// ----------- Cloud storage (Supabase) -----------
+let currentUserId = null;
+let entriesCache = [];
+async function refreshEntries() {
+    if (!currentUserId) {
+        entriesCache = [];
+        return;
+    }
+    const { data, error } = await window.supabase
+        .from("entries")
+        .select("*")
+        .eq("user_id", currentUserId)
+        .order("date", { ascending: true });
+    if (error) {
+        console.error(error);
+        entriesCache = [];
+        return;
+    }
+    entriesCache = data.map(r => ({
+        date: r.date,
+        type: r.type,
+        workedMinutes: r.worked_minutes,
+        nightMinutes: r.night_minutes
+    }));
+}
+async function upsertEntry(entry) {
+    if (!currentUserId)
+        return;
+    const { error } = await window.supabase.from("entries").upsert({
+        user_id: currentUserId,
+        date: entry.date,
+        type: entry.type,
+        worked_minutes: entry.workedMinutes,
+        night_minutes: entry.nightMinutes
+    });
+    if (error)
+        throw error;
+}
+async function deleteEntryByDate(dateISO) {
+    if (!currentUserId)
+        return;
+    const { error } = await window.supabase
+        .from("entries")
+        .delete()
+        .eq("user_id", currentUserId)
+        .eq("date", dateISO);
+    if (error)
+        throw error;
+}
+// Vacation allowance per year (still local for now; easy to move to DB later)
 function loadAllowance() {
     const raw = localStorage.getItem("vacAllowance");
     const n = raw ? parseInt(raw) : 30;
@@ -75,9 +133,11 @@ const sumDaysVacation = document.getElementById("sumDaysVacation");
 const sumDaysSick = document.getElementById("sumDaysSick");
 const sumVacUsed = document.getElementById("sumVacUsed");
 const sumVacRemaining = document.getElementById("sumVacRemaining");
-function getSelectedMonthKey() {
-    return `${yearPicker.value}-${monthOnly.value}`; // YYYY-MM
-}
+// Auth/UI bits
+const loginCard = document.getElementById("loginCard");
+const loginBtn = document.getElementById("loginBtn");
+const loginEmail = document.getElementById("loginEmail");
+const signOutBtn = document.getElementById("signOutBtn");
 // Date quick controls
 const workDateInput = document.getElementById("workDate");
 const openCalendarBtn = document.getElementById("openCalendarBtn");
@@ -110,7 +170,6 @@ function setMonthYearToToday() {
     const y = String(now.getFullYear());
     const m = String(now.getMonth() + 1).padStart(2, "0");
     yearPicker.value = y;
-    // ensure the correct option is selected visually
     const idx = Array.from(monthOnly.options).findIndex(o => o.value === m);
     if (idx >= 0)
         monthOnly.selectedIndex = idx;
@@ -120,11 +179,11 @@ function setMonthYearToToday() {
 }
 if (yearLabel)
     yearLabel.textContent = yearPicker.value;
-// ----------- History Rendering (guarded) -----------
-function renderHistory() {
+// ----------- History Rendering (uses entriesCache) -----------
+async function renderHistory() {
     if (!historyTable)
         return;
-    const entries = loadEntries().sort((a, b) => b.date.localeCompare(a.date));
+    const entries = [...entriesCache].sort((a, b) => b.date.localeCompare(a.date));
     historyTable.innerHTML = "";
     for (const entry of entries) {
         const row = document.createElement("tr");
@@ -141,12 +200,14 @@ function renderHistory() {
       </td>
     `;
         historyTable.appendChild(row);
-        row.querySelector(".delete-btn")?.addEventListener("click", () => {
-            const updated = loadEntries().filter(e => e.date !== entry.date);
-            localStorage.setItem("entries", JSON.stringify(updated));
-            renderHistory();
-            renderSummary();
+        // Delete
+        row.querySelector(".delete-btn")?.addEventListener("click", async () => {
+            await deleteEntryByDate(entry.date);
+            await refreshEntries();
+            await renderHistory();
+            await renderSummary();
         });
+        // Edit (prefill form)
         row.querySelector(".edit-btn")?.addEventListener("click", () => {
             const formDate = document.getElementById("workDate");
             const formType = document.getElementById("dayType");
@@ -169,18 +230,17 @@ function renderHistory() {
         });
     }
 }
-// ----------- Summary Rendering -----------
-function renderSummary() {
-    const entries = loadEntries();
+// ----------- Summary Rendering (uses entriesCache) -----------
+async function renderSummary() {
     // Fallbacks if somehow empty (won't override our forced init)
     if (!yearPicker.value)
         yearPicker.value = String(new Date().getFullYear());
     if (!monthOnly.value)
         monthOnly.value = (new Date().getMonth() + 1).toString().padStart(2, "0");
-    const monthKey = getSelectedMonthKey(); // YYYY-MM
+    const monthKey = `${yearPicker.value}-${monthOnly.value}`; // YYYY-MM
     const yearKey = yearPicker.value; // YYYY
-    const monthEntries = entries.filter(e => e.date.slice(0, 7) === monthKey);
-    const yearEntries = entries.filter(e => e.date.slice(0, 4) === yearKey);
+    const monthEntries = entriesCache.filter(e => e.date.slice(0, 7) === monthKey);
+    const yearEntries = entriesCache.filter(e => e.date.slice(0, 4) === yearKey);
     const totalWorkedMonth = monthEntries.reduce((s, e) => s + e.workedMinutes, 0);
     const totalNightMonth = monthEntries.reduce((s, e) => s + e.nightMinutes, 0);
     const daysNormal = monthEntries.filter(e => e.type === "normal").length;
@@ -209,10 +269,11 @@ function fmtDate(d) {
 function parseISO(dateStr) {
     const parts = dateStr.split("-");
     const y = Number(parts[0]);
-    const m = Number(parts[1]);
+    const m = Number(parts[1]); // 1–12
     const d = Number(parts[2]);
-    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d))
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
         throw new Error("Invalid date format");
+    }
     return new Date(y, m - 1, d);
 }
 function shiftDate(dateStr, deltaDays) {
@@ -227,10 +288,18 @@ if (!workDateInput.value)
 openCalendarBtn?.addEventListener("click", () => {
     workDateInput.showPicker?.() ?? workDateInput.focus();
 });
-todayBtn?.addEventListener("click", () => { workDateInput.value = fmtDate(new Date()); });
-yesterdayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, -1); });
-minusDayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, -1); });
-plusDayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, +1); });
+todayBtn?.addEventListener("click", () => {
+    workDateInput.value = fmtDate(new Date());
+});
+yesterdayBtn?.addEventListener("click", () => {
+    workDateInput.value = shiftDate(workDateInput.value, -1);
+});
+minusDayBtn?.addEventListener("click", () => {
+    workDateInput.value = shiftDate(workDateInput.value, -1);
+});
+plusDayBtn?.addEventListener("click", () => {
+    workDateInput.value = shiftDate(workDateInput.value, +1);
+});
 // Month nav helpers
 function shiftMonth(year, month, delta) {
     let y = year;
@@ -245,24 +314,24 @@ function shiftMonth(year, month, delta) {
     }
     return { y, m };
 }
-prevMonthBtn?.addEventListener("click", () => {
+prevMonthBtn?.addEventListener("click", async () => {
     const y = parseInt(yearPicker.value) || new Date().getFullYear();
     const m = parseInt(monthOnly.value) || (new Date().getMonth() + 1);
     const next = shiftMonth(y, m, -1);
     yearPicker.value = String(next.y);
     monthOnly.value = next.m.toString().padStart(2, "0");
-    renderSummary();
+    await renderSummary();
 });
-nextMonthBtn?.addEventListener("click", () => {
+nextMonthBtn?.addEventListener("click", async () => {
     const y = parseInt(yearPicker.value) || new Date().getFullYear();
     const m = parseInt(monthOnly.value) || (new Date().getMonth() + 1);
     const next = shiftMonth(y, m, +1);
     yearPicker.value = String(next.y);
     monthOnly.value = next.m.toString().padStart(2, "0");
-    renderSummary();
+    await renderSummary();
 });
 // Update summary when month/year changes
-monthOnly?.addEventListener("change", renderSummary);
+monthOnly?.addEventListener("change", () => { renderSummary(); });
 yearPicker?.addEventListener("change", () => {
     renderSummary();
     if (yearLabel)
@@ -270,7 +339,7 @@ yearPicker?.addEventListener("change", () => {
 });
 // ----------- Calendar rendering & drawer -----------
 function daysInMonth(year, month1to12) {
-    return new Date(year, month1to12, 0).getDate();
+    return new Date(year, month1to12, 0).getDate(); // month is 1–12 here
 }
 function firstWeekdayIndexMonFirst(year, month1to12) {
     const d = new Date(year, month1to12 - 1, 1).getDay();
@@ -278,7 +347,7 @@ function firstWeekdayIndexMonFirst(year, month1to12) {
 }
 function entryMapByDate() {
     const map = {};
-    for (const e of loadEntries())
+    for (const e of entriesCache)
         map[e.date] = e;
     return map;
 }
@@ -291,7 +360,7 @@ function renderCalendar() {
         return;
     const y = parseInt(yearPicker.value) || new Date().getFullYear();
     const mStr = monthOnly.value || (new Date().getMonth() + 1).toString().padStart(2, "0");
-    const m = parseInt(mStr);
+    const m = parseInt(mStr); // 1..12
     const map = entryMapByDate();
     const todayISO = fmtDate(new Date());
     const days = daysInMonth(y, m);
@@ -303,13 +372,14 @@ function renderCalendar() {
     const nextMonth = m === 12 ? 1 : m + 1;
     const nextYear = m === 12 ? y + 1 : y;
     calendarGrid.innerHTML = "";
+    // Helper to build a day cell
     const makeCell = (dateISO, inMonth) => {
         const cell = document.createElement("button");
         cell.type = "button";
         cell.className = "cal-day";
         if (!inMonth)
             cell.classList.add("outside");
-        const dow = new Date(dateISO).getDay();
+        const dow = new Date(dateISO).getDay(); // 0=Sun..6=Sat
         if (dow === 0 || dow === 6)
             cell.classList.add("weekend");
         if (dateISO === todayISO)
@@ -349,18 +419,22 @@ function renderCalendar() {
             badges.appendChild(add);
         }
         cell.appendChild(badges);
+        // click → open drawer
         cell.addEventListener("click", () => openDayDrawer(dateISO, e ?? null));
         return cell;
     };
+    // Leading days
     for (let i = leading - 1; i >= 0; i--) {
         const day = prevDays - i;
         const dateISO = `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
         calendarGrid.appendChild(makeCell(dateISO, false));
     }
+    // Current month
     for (let d = 1; d <= days; d++) {
         const dateISO = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
         calendarGrid.appendChild(makeCell(dateISO, true));
     }
+    // Trailing days
     for (let d = 1; d <= trailing; d++) {
         const dateISO = `${nextYear}-${String(nextMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
         calendarGrid.appendChild(makeCell(dateISO, false));
@@ -397,27 +471,31 @@ function closeDayDrawer() {
     dayDrawer.setAttribute("aria-hidden", "true");
     drawerSelectedDate = null;
 }
+// Drawer events
 drawerClose?.addEventListener("click", closeDayDrawer);
-dayDrawer?.addEventListener("click", (e) => { if (e.target === dayDrawer)
-    closeDayDrawer(); });
+dayDrawer?.addEventListener("click", (e) => {
+    if (e.target === dayDrawer)
+        closeDayDrawer(); // click backdrop
+});
+// Drawer actions
 drawerEdit?.addEventListener("click", () => {
     if (!drawerSelectedDate)
         return;
     document.getElementById("workDate").value = drawerSelectedDate;
-    const entry = loadEntries().find(e => e.date === drawerSelectedDate);
+    const entry = entriesCache.find(e => e.date === drawerSelectedDate) ?? null;
     document.getElementById("dayType").value = entry?.type ?? "normal";
     timeInputs.style.display = (entry?.type ?? "normal") === "normal" ? "block" : "none";
     closeDayDrawer();
     document.getElementById("workForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
-drawerDelete?.addEventListener("click", () => {
+drawerDelete?.addEventListener("click", async () => {
     if (!drawerSelectedDate)
         return;
-    const updated = loadEntries().filter(e => e.date !== drawerSelectedDate);
-    localStorage.setItem("entries", JSON.stringify(updated));
+    await deleteEntryByDate(drawerSelectedDate);
     closeDayDrawer();
-    renderCalendar();
-    renderSummary();
+    await refreshEntries();
+    await renderHistory();
+    await renderSummary();
 });
 // ----------- Year dropdown grid (optional) -----------
 let baseYear = Math.floor((parseInt(yearPicker.value) || new Date().getFullYear()) / 10) * 10;
@@ -434,11 +512,11 @@ function renderYearGrid() {
         btn.textContent = String(y);
         if (y === selectedYear)
             btn.classList.add("active");
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", async () => {
             yearPicker.value = String(y);
             if (yearLabel)
                 yearLabel.textContent = String(y);
-            renderSummary();
+            await renderSummary();
             closeYearDropdown();
         });
         yearGrid.appendChild(btn);
@@ -464,24 +542,148 @@ yearDropdownBtn?.addEventListener("click", (e) => {
     else
         closeYearDropdown();
 });
-prevDecadeBtn?.addEventListener("click", (e) => { e.stopPropagation(); baseYear -= 16; renderYearGrid(); });
-nextDecadeBtn?.addEventListener("click", (e) => { e.stopPropagation(); baseYear += 16; renderYearGrid(); });
+prevDecadeBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    baseYear -= 16;
+    renderYearGrid();
+});
+nextDecadeBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    baseYear += 16;
+    renderYearGrid();
+});
 document.addEventListener("click", (e) => {
     if (!yearDropdown || !yearDropdownBtn)
         return;
     if (!yearDropdown.hidden) {
         const target = e.target;
-        if (!yearDropdown.contains(target) && target !== yearDropdownBtn)
+        if (!yearDropdown.contains(target) && target !== yearDropdownBtn) {
             closeYearDropdown();
+        }
     }
 });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape")
-    closeYearDropdown(); });
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape")
+        closeYearDropdown();
+});
+// ----------- UI Events -----------
+dayType.addEventListener("change", () => {
+    timeInputs.style.display = dayType.value === "normal" ? "block" : "none";
+});
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const type = document.getElementById("dayType").value;
+    const date = document.getElementById("workDate").value;
+    if (!date) {
+        alert("Please choose a date.");
+        return;
+    }
+    if (type !== "normal") {
+        const entry = { date, type, workedMinutes: 480, nightMinutes: 0 };
+        await upsertEntry(entry);
+        await refreshEntries();
+        await renderHistory();
+        await renderSummary();
+        workedTime.textContent = "08:00";
+        nightTime.textContent = "00:00";
+        infoMessage.textContent = type === "vacation" ? "Vacation day recorded." : "Sick leave recorded.";
+        return;
+    }
+    const startStr = document.getElementById("startTime").value;
+    const endStr = document.getElementById("endTime").value;
+    const pauseMin = parseInt(document.getElementById("pauseTime").value) || 0;
+    if (!startStr || !endStr) {
+        alert("Please fill in both start and end time.");
+        return;
+    }
+    const startMin = parseTime(startStr);
+    const endMin = parseTime(endStr);
+    let totalWorkMin = endMin - startMin - pauseMin;
+    if (totalWorkMin < 0)
+        totalWorkMin += 1440;
+    const nightMin = calcNightMinutes(startMin, endMin, pauseMin);
+    const entry = {
+        date,
+        type,
+        workedMinutes: totalWorkMin,
+        nightMinutes: nightMin
+    };
+    await upsertEntry(entry);
+    await refreshEntries();
+    await renderHistory();
+    await renderSummary();
+    workedTime.textContent = formatTime(totalWorkMin);
+    nightTime.textContent = formatTime(nightMin);
+    infoMessage.textContent = "Normal work day calculated.";
+});
+saveAllowanceBtn?.addEventListener("click", async () => {
+    const n = parseInt(vacAllowanceInput.value);
+    if (!Number.isFinite(n) || n < 0) {
+        alert("Please enter a valid non-negative number.");
+        return;
+    }
+    saveAllowance(n);
+    await renderSummary();
+});
+// ----------- Auth UI wiring -----------
+function showLogin(show) {
+    const appSection = document.getElementById("tracker");
+    if (loginCard)
+        loginCard.style.display = show ? "block" : "none";
+    if (appSection)
+        appSection.style.display = show ? "none" : "block";
+}
+function wireLoginUI() {
+    if (loginBtn && loginEmail) {
+        loginBtn.onclick = async () => {
+            const email = loginEmail.value.trim();
+            if (!email) {
+                alert("Enter your email");
+                return;
+            }
+            try {
+                await signInWithEmail(email);
+                alert("Magic link sent. Check your email.");
+            }
+            catch (e) {
+                alert(e?.message ?? "Sign-in failed");
+            }
+        };
+    }
+    if (signOutBtn) {
+        signOutBtn.onclick = async () => {
+            await window.supabase.auth.signOut();
+        };
+    }
+}
 // ----------- Initial Setup -----------
-function init() {
+async function init() {
+    wireLoginUI();
+    const user = await getCurrentUser();
+    if (!user) {
+        showLogin(true);
+        return;
+    }
+    currentUserId = user.id;
+    showLogin(false);
     setMonthYearToToday();
-    renderHistory();
-    renderSummary();
+    await refreshEntries();
+    await renderHistory();
+    await renderSummary();
+    onAuthStateChanged(async (u) => {
+        if (!u) {
+            currentUserId = null;
+            entriesCache = [];
+            showLogin(true);
+        }
+        else {
+            currentUserId = u.id;
+            showLogin(false);
+            await refreshEntries();
+            await renderHistory();
+            await renderSummary();
+        }
+    });
 }
 init();
 export {};

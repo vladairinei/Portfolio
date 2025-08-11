@@ -21,7 +21,18 @@
     </nav>
 
     <main>
-      <section id="tracker">
+      <!-- LOGIN (visible by default) -->
+      <section id="loginCard" style="max-width:520px; margin:1rem auto;">
+        <h2>Sign in</h2>
+        <p>Get a magic link to your email.</p>
+        <div class="input-row">
+          <input id="loginEmail" type="email" placeholder="you@example.com" />
+          <button id="loginBtn" type="button">Send link</button>
+        </div>
+      </section>
+
+      <!-- APP (hidden until authenticated) -->
+      <section id="tracker" style="display:none">
         <h1>🚚 Work Time Tracker</h1>
 
         <form id="workForm">
@@ -62,98 +73,89 @@
           <p><strong>Night Shift Time:</strong> <span id="nightTime">-</span></p>
           <p><strong>Info:</strong> <span id="infoMessage">-</span></p>
         </div>
-      </section>
 
-      <section id="calendarSection">
-  <h2>📅 Calendar</h2>
+        <!-- Calendar (moved INSIDE #tracker) -->
+        <section id="calendarSection">
+          <h2>📅 Calendar</h2>
 
-  <!-- Calendar toolbar (moved here) -->
-  <div class="cal-toolbar">
-    <button id="prevMonthBtn" type="button" aria-label="Previous month">←</button>
+          <div class="cal-toolbar">
+            <button id="prevMonthBtn" type="button" aria-label="Previous month">←</button>
 
-    <label for="monthOnly" class="sr-only">Month</label>
-    <select id="monthOnly">
-      <option value="01">Jan</option><option value="02">Feb</option>
-      <option value="03">Mar</option><option value="04">Apr</option>
-      <option value="05">May</option><option value="06">Jun</option>
-      <option value="07">Jul</option><option value="08">Aug</option>
-      <option value="09">Sep</option><option value="10">Oct</option>
-      <option value="11">Nov</option><option value="12">Dec</option>
-    </select>
+            <label for="monthOnly" class="sr-only">Month</label>
+            <select id="monthOnly">
+              <option value="01">Jan</option><option value="02">Feb</option>
+              <option value="03">Mar</option><option value="04">Apr</option>
+              <option value="05">May</option><option value="06">Jun</option>
+              <option value="07">Jul</option><option value="08">Aug</option>
+              <option value="09">Sep</option><option value="10">Oct</option>
+              <option value="11">Nov</option><option value="12">Dec</option>
+            </select>
 
-    <!-- Year dropdown button (the fancy 4×4 picker) -->
-    <input type="hidden" id="yearPicker" />
-    <button id="yearDropdownBtn" type="button" aria-haspopup="true" aria-expanded="false">
-      <span id="yearLabel"></span> ▾
-    </button>
-    <div id="yearDropdown" class="year-dropdown" hidden>
-      <div class="year-dropdown-header">
-        <button id="prevDecadeBtn" type="button">«</button>
-        <span id="yearRangeLabel"></span>
-        <button id="nextDecadeBtn" type="button">»</button>
-      </div>
-      <div id="yearGrid" class="year-grid" role="listbox" aria-label="Choose year"></div>
-    </div>
+            <input type="hidden" id="yearPicker" />
+            <button id="yearDropdownBtn" type="button" aria-haspopup="true" aria-expanded="false">
+              <span id="yearLabel"></span> ▾
+            </button>
+            <div id="yearDropdown" class="year-dropdown" hidden>
+              <div class="year-dropdown-header">
+                <button id="prevDecadeBtn" type="button">«</button>
+                <span id="yearRangeLabel"></span>
+                <button id="nextDecadeBtn" type="button">»</button>
+              </div>
+              <div id="yearGrid" class="year-grid" role="listbox" aria-label="Choose year"></div>
+            </div>
 
-    <button id="nextMonthBtn" type="button" aria-label="Next month">→</button>
-  </div>
+            <button id="nextMonthBtn" type="button" aria-label="Next month">→</button>
+          </div>
 
-  <!-- Weekday row -->
-  <div class="cal-weekdays">
-    <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
-  </div>
+          <div class="cal-weekdays">
+            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+          </div>
 
-  <!-- Calendar grid -->
-  <div id="calendarGrid" class="cal-grid" aria-label="Month calendar"></div>
-</section>
+          <div id="calendarGrid" class="cal-grid" aria-label="Month calendar"></div>
+        </section>
 
-    <!-- Bottom drawer for the selected day -->
-    <div id="dayDrawer" class="drawer" aria-hidden="true">
-        <div class="drawer-sheet" role="dialog" aria-modal="true" aria-labelledby="drawerDate">
+        <!-- Bottom drawer -->
+        <div id="dayDrawer" class="drawer" aria-hidden="true">
+          <div class="drawer-sheet" role="dialog" aria-modal="true" aria-labelledby="drawerDate">
             <button id="drawerClose" class="drawer-close" aria-label="Close">✕</button>
-
             <h3 id="drawerDate">—</h3>
-            <div id="drawerBody" class="drawer-body">
-            <!-- Filled by TS: type, worked, night -->
-            </div>
-
+            <div id="drawerBody" class="drawer-body"></div>
             <div class="drawer-actions">
-                <button id="drawerEdit" class="btn-primary">Add / Edit</button>
-                <button id="drawerDelete" class="btn-danger">Delete</button>
+              <button id="drawerEdit" class="btn-primary">Add / Edit</button>
+              <button id="drawerDelete" class="btn-danger">Delete</button>
             </div>
+          </div>
         </div>
-    </div>
 
-      <section id="summarySection">
-        <h2>📊 Monthly & Yearly Summary</h2>
-
-        <!-- Only vacation allowance control remains -->
-        <div class="summary-controls">
+        <!-- Summary (moved INSIDE #tracker) -->
+        <section id="summarySection">
+          <h2>📊 Monthly & Yearly Summary</h2>
+          <div class="summary-controls">
             <label for="vacAllowance">Vacation allowance (per year):</label>
             <input type="number" id="vacAllowance" min="0" value="30" />
             <button id="saveAllowanceBtn" type="button">Save</button>
-        </div>
+          </div>
 
-        <div class="summary-grid">
+          <div class="summary-grid">
             <div class="card">
-            <h3>This month</h3>
-            <p><strong>Total worked:</strong> <span id="sumWorked">-</span></p>
-            <p><strong>Night bonus:</strong> <span id="sumNight">-</span></p>
-            <p><strong>Days: </strong>
+              <h3>This month</h3>
+              <p><strong>Total worked:</strong> <span id="sumWorked">-</span></p>
+              <p><strong>Night bonus:</strong> <span id="sumNight">-</span></p>
+              <p><strong>Days: </strong>
                 Normal <span id="sumDaysNormal">0</span> •
                 Vacation <span id="sumDaysVacation">0</span> •
                 Sick <span id="sumDaysSick">0</span>
-            </p>
+              </p>
             </div>
 
             <div class="card">
-            <h3>This year</h3>
-            <p><strong>Vacation used:</strong> <span id="sumVacUsed">0</span></p>
-            <p><strong>Vacation remaining:</strong> <span id="sumVacRemaining">0</span></p>
+              <h3>This year</h3>
+              <p><strong>Vacation used:</strong> <span id="sumVacUsed">0</span></p>
+              <p><strong>Vacation remaining:</strong> <span id="sumVacRemaining">0</span></p>
             </div>
-        </div>
+          </div>
+        </section>
       </section>
-
     </main>
 
     <footer>
@@ -161,10 +163,15 @@
     </footer>
   </div>
 
+  <!-- Supabase config & client MUST load before your app -->
+  <script src="supabase-config.js"></script>
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    // @ts-ignore
+    window.supabase = createClient(window.__SUPABASE.url, window.__SUPABASE.anonKey);
+  </script>
+
   <script src="theme.js"></script>
   <script type="module" src="dist/tracker.js"></script>
-  <script>
-  console.log("INLINE after dist tag — if you see this but not tracker boot, dist/tracker.js didn’t run.");
-  </script>
 </body>
 </html>
