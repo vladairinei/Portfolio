@@ -1,0 +1,22 @@
+{
+  "name": "vlad-portfolio",
+  "version": "1.0.0",
+  "description": "Vlad Airinei - Web Design & Development Portfolio",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "portfolio",
+    "typescript",
+    "web-design",
+    "fullstack"
+  ],
+  "author": "Vlad Airinei",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

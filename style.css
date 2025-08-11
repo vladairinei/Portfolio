@@ -1,0 +1,759 @@
+/* ================================
+   THEME VARIABLES
+================================ */
+:root {
+  --bg: #f5f7fb;
+  --text: #111827;
+  --muted: #6b7280;
+
+  --nav-bg: #ffffff;
+  --card-bg: #ffffff;
+
+  --btn-bg: #eef2ff;
+  --btn-hover: #e0e7ff;
+
+  --accent: #4f46e5;            /* Indigo */
+  --accent-contrast: #ffffff;
+
+  --border: #e5e7eb;
+  --shadow: 0 10px 30px rgba(2, 6, 23, 0.08);
+}
+
+[data-theme="dark"] {
+  --bg: #0b1020;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+
+  --nav-bg: #0f172a;
+  --card-bg: #0f172a;
+
+  --btn-bg: #111827;
+  --btn-hover: #1f2937;
+
+  --accent: #6366f1;
+  --accent-contrast: #ffffff;
+
+  --border: #1f2937;
+  --shadow: 0 10px 30px rgba(0,0,0,0.45);
+}
+
+/* ================================
+   GLOBAL LAYOUT
+================================ */
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.page-wrapper {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  display: flex;
+  flex-direction: column;    /* vertical stacking */
+  align-items: center;       /* center sections */
+  gap: 2rem;
+  padding: 4.5rem 1rem 2.5rem; /* top padding for fixed nav */
+}
+
+/* Section containers */
+#tracker,
+#historySection,
+#summarySection {
+  width: 100%;
+  max-width: 980px;
+}
+
+/* Headings */
+h1, h2, h3 {
+  margin: 0 0 1rem 0;
+}
+h1 {
+  font-size: clamp(1.6rem, 2.4vw + 1rem, 2.2rem);
+  letter-spacing: 0.2px;
+}
+h2 {
+  font-size: clamp(1.2rem, 1.4vw + 0.8rem, 1.4rem);
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* ================================
+   NAVBAR
+================================ */
+nav {
+  position: fixed;
+  inset: 0 0 auto 0;
+  background: var(--nav-bg);
+  box-shadow: var(--shadow);
+  z-index: 1000;
+}
+
+.nav-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.8rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 1.2rem;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--text);
+  padding: 0.5rem 0.8rem;
+  border-radius: 10px;
+  transition: background 0.2s ease, transform 0.08s ease;
+}
+.nav-links a:hover {
+  background: var(--btn-hover);
+}
+.nav-links a:active {
+  transform: translateY(1px);
+}
+
+#themeToggle {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  translate: 0 -50%;
+  background: var(--btn-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.08s ease;
+}
+#themeToggle:hover { background: var(--btn-hover); }
+#themeToggle:active { transform: translateY(1px); }
+
+/* ================================
+   FORM / TRACKER CARD
+================================ */
+#tracker form {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+}
+
+#tracker label {
+  display: block;
+  font-weight: 600;
+  margin: 0.7rem 0 0.35rem;
+}
+
+#tracker input[type="date"],
+#tracker input[type="time"],
+#tracker input[type="number"],
+#tracker select {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+#tracker input:focus,
+#tracker select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.date-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+.date-row button {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.08s ease;
+}
+.date-row button:hover { background: var(--btn-hover); }
+.date-row button:active { transform: translateY(1px); }
+
+#timeInputs {
+  margin-top: 0.25rem;
+}
+
+#tracker button[type="submit"] {
+  margin-top: 0.9rem;
+  width: 100%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.08s ease;
+}
+#tracker button[type="submit"]:hover { opacity: 0.92; }
+#tracker button[type="submit"]:active { transform: translateY(1px); }
+
+/* Results card */
+#resultBox {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+}
+#resultBox p {
+  margin: 0.35rem 0;
+}
+#resultBox strong {
+  color: var(--muted);
+}
+
+/* ================================
+   HISTORY TABLE (scroll ~10 rows)
+================================ */
+#historySection { }
+
+.table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 480px; /* ~10 rows */
+  border-radius: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+#historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+#historyTable thead th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--nav-bg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+#historyTable tbody td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+#historyTable tbody tr:nth-child(odd) {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+[data-theme="dark"] #historyTable tbody tr:nth-child(odd) {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+#historyTable tbody tr:hover {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+
+/* action buttons */
+#historyTable .edit-btn,
+#historyTable .delete-btn {
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  transition: background 0.2s ease, transform 0.08s ease;
+  margin-right: 0.35rem;
+}
+#historyTable .edit-btn:hover { background: var(--btn-hover); }
+#historyTable .delete-btn:hover { background: color-mix(in srgb, #ef4444 20%, var(--btn-bg)); }
+#historyTable .edit-btn:active,
+#historyTable .delete-btn:active { transform: translateY(1px); }
+
+/* ================================
+   SUMMARY CARDS & CONTROLS
+================================ */
+#summarySection { }
+
+.summary-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.8rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.summary-controls label {
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.summary-controls select,
+.summary-controls input[type="number"] {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+}
+.summary-controls button {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.08s ease;
+}
+.summary-controls button:hover { background: var(--btn-hover); }
+.summary-controls button:active { transform: translateY(1px); }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.summary-grid .card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.25rem;
+}
+.summary-grid .card h3 {
+  margin: 0 0 0.5rem;
+}
+.summary-grid .card p {
+  margin: 0.35rem 0;
+}
+
+/* ================================
+   FOOTER
+================================ */
+footer {
+  margin-top: auto;
+  padding: 1.2rem 1rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ================================
+   RESPONSIVE TWEAKS
+================================ */
+@media (max-width: 640px) {
+  .nav-links { gap: 0.6rem; }
+  #historyTable { min-width: 560px; }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Year dropdown (grid 4x4) ===== */
+#yearDropdownBtn {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.08s ease;
+}
+#yearDropdownBtn:hover { background: var(--btn-hover); }
+#yearDropdownBtn:active { transform: translateY(1px); }
+
+.year-dropdown {
+  position: absolute;
+  z-index: 1100;
+  margin-top: 0.4rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 0.6rem;
+  min-width: 260px;
+}
+
+.year-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.year-dropdown-header button {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.year-dropdown-header button:hover { background: var(--btn-hover); }
+
+#yearRangeLabel {
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.year-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+}
+
+.year-grid button.year-cell {
+  padding: 0.6rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease;
+}
+.year-grid button.year-cell:hover {
+  background: var(--btn-hover);
+}
+.year-grid button.year-cell.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: transparent;
+}
+.year-grid button.year-cell:active {
+  transform: translateY(1px);
+}
+
+/* Keep the dropdown nicely positioned in the controls row */
+.summary-controls {
+  position: relative;
+  flex-wrap: wrap;
+  row-gap: 0.6rem;
+}
+
+/* ===== Calendar grid ===== */
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  max-width: 980px;
+  margin: 0 auto 0.5rem;
+  color: var(--muted);
+  font-weight: 700;
+  gap: 0.4rem;
+  padding: 0 0.2rem;
+}
+.cal-weekdays > div {
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.cal-day {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  min-height: 92px;
+  padding: 0.5rem;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: transform 0.06s ease, background 0.2s ease;
+}
+.cal-day:hover { background: var(--btn-hover); }
+.cal-day:active { transform: translateY(1px); }
+
+.cal-day .day-num {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.cal-day .muted { color: var(--muted); }
+
+.cal-day .badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--text);
+}
+.badge.type-normal { border-color: #60a5fa33; background: #60a5fa22; }
+.badge.type-vacation { border-color: #34d39933; background: #34d39922; }
+.badge.type-sick { border-color: #f59e0b33; background: #f59e0b22; }
+.badge.time { opacity: 0.9; }
+
+/* Today / weekend highlights */
+.cal-day.today { outline: 2px solid var(--accent); }
+.cal-day.weekend { background: color-mix(in srgb, var(--text) 6%, transparent); }
+
+/* Empty days (outside month) */
+.cal-day.outside { opacity: 0.5; }
+
+/* ===== Bottom drawer ===== */
+.drawer {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #000 45%, transparent);
+  display: none;
+  z-index: 1200;
+}
+.drawer[aria-hidden="false"] { display: block; }
+
+.drawer-sheet {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -100%;
+  width: min(720px, 96vw);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.25rem 1.25rem;
+  transition: bottom 180ms ease-out;
+}
+.drawer[aria-hidden="false"] .drawer-sheet { bottom: 0; }
+
+.drawer-close {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.6rem;
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+.drawer-body p { margin: 0.35rem 0; }
+
+.drawer-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+.btn-primary, .btn-danger {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.6rem 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.06s ease;
+}
+.btn-primary { background: var(--accent); color: var(--accent-contrast); border-color: transparent; }
+.btn-primary:hover { opacity: 0.93; }
+.btn-primary:active, .btn-danger:active { transform: translateY(1px); }
+.btn-danger { background: var(--btn-bg); color: var(--text); }
+.btn-danger:hover { background: color-mix(in srgb, #ef4444 20%, var(--btn-bg)); }
+
+/* Small screens */
+@media (max-width: 640px) {
+  .cal-day { min-height: 84px; }
+}
+
+/* Calendar toolbar (above calendar) */
+.cal-toolbar {
+  max-width: 980px;
+  margin: 0 auto 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  position: relative;
+}
+
+.cal-toolbar select,
+.cal-toolbar button {
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.06s ease;
+}
+.cal-toolbar select { padding-right: 2rem; }
+.cal-toolbar button:hover { background: var(--btn-hover); }
+.cal-toolbar button:active { transform: translateY(1px); }
+
+/* Make the year dropdown position nicely under the year button */
+.cal-toolbar { position: relative; }
+.cal-toolbar #yearDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+}
+
+/* ===== ToDo App (scoped) ===== */
+#todoApp.todo-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+#todoApp .input-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+#todoApp input[type="text"] {
+  flex: 1;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#todoApp #addTaskButton {
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .15s ease, transform .06s ease;
+}
+#todoApp #addTaskButton:hover { opacity: .92; }
+#todoApp #addTaskButton:active { transform: translateY(1px); }
+
+#todoApp ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+#todoApp li {
+  display: flex;                 /* keep checkbox/text/actions on one line */
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+#todoApp li span {
+  flex: 1;                       /* text grows and wraps */
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+#todoApp li .actions {
+  display: flex;                 /* checkbox + delete aligned right */
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 84px;
+  justify-content: flex-end;
+}
+
+#todoApp li input[type="checkbox"] {
+  transform: scale(1.2);
+  cursor: pointer;
+  margin: 0;
+}
+
+#todoApp li button {
+  background: var(--btn-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}
+#todoApp li button:hover {
+  background: var(--btn-hover);
+}
+
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+
+/* Portfolio projects grid on home */
+.projects-grid{
+  width:100%;
+  max-width:980px;
+  display:grid;
+  grid-template-columns: repeat(2, minmax(240px,1fr));
+  gap:1rem;
+}
+@media (max-width: 720px){
+  .projects-grid{ grid-template-columns: 1fr; }
+}
+.proj-card{
+  display:flex; flex-direction:column; gap:0.4rem;
+  background: var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow: var(--shadow);
+  padding:1rem 1.25rem;
+  text-decoration:none;
+  color: var(--text);
+  transition: transform .06s ease, background .2s ease;
+}
+.proj-card:hover{ background: var(--btn-hover); }
+.proj-card:active{ transform: translateY(1px); }
+.proj-emoji{ font-size:1.8rem; line-height:1; }
+.proj-card h3{ margin:0.2rem 0 0.2rem; }
+.proj-card p{ margin:0; color: var(--muted); }
+.proj-cta{ margin-top:auto; font-weight:700; color: var(--text); opacity:.9; }
+

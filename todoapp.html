@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Projects – Vlad Airinei</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <nav>
+      <div class="nav-wrapper">
+        <ul class="nav-links">
+          <li><a href="index.html">🏠 Home</a></li>
+          <li><a href="todoapp.html">📝 ToDoApp</a></li>
+          <li><a href="tracker.html">⏱ Work Tracker</a></li>
+          <li><a href="contact.html">📫 Contact</a></li>
+        </ul>
+        <button id="themeToggle">🌓</button>
+      </div>
+    </nav>
+  <main>
+  <section id="projects">
+    <h2>📝 ToDo App (TypeScript)</h2>
+
+    <div id="todoApp" class="todo-card">
+      <div class="input-row">
+        <input type="text" id="taskInput" placeholder="Enter your task..." />
+        <button id="addTaskButton">Add</button>
+      </div>
+
+      <ul id="taskList"></ul>
+    </div>
+  </section>
+</main>
+  <footer>
+    <p>© 2025 Vlad Airinei</p>
+  </footer>
+<div>
+  <script type="module" src="dist/main.js"></script>
+  <script src="theme.js"></script>
+</body>
+</html>
