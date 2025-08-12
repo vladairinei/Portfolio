@@ -1,12 +1,10 @@
 // ==============================
 // Tracker (TypeScript) – Supabase auth + per‑user storage
 // ==============================
-// ----------- Helpers -----------
 async function signUpWithPassword(email, password) {
     const { data, error } = await window.supabase.auth.signUp({ email, password });
     if (error)
         throw error;
-    // If Confirm Email is ON, user must click the email link before being “confirmed”.
     return data;
 }
 async function signInWithPassword(email, password) {
@@ -17,25 +15,50 @@ async function signInWithPassword(email, password) {
 }
 async function sendPasswordReset(email) {
     const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: location.origin + location.pathname // return here after clicking the email link
+        redirectTo: location.origin + location.pathname
     });
     if (error)
         throw error;
 }
-// Handle the “reset password” flow after the email link
 async function finishPasswordReset(newPassword) {
     const { data, error } = await window.supabase.auth.updateUser({ password: newPassword });
     if (error)
         throw error;
     return data;
 }
+async function getCurrentUser() {
+    const { data } = await window.supabase.auth.getUser();
+    return data.user ? { id: data.user.id } : null;
+}
+function onAuthStateChanged(handler) {
+    const supabase = window.supabase;
+    supabase.auth.onAuthStateChange(async () => {
+        handler(await getCurrentUser());
+    });
+}
+// ----------- Small UI helpers for auth -----------
+function setAuthNote(msg, isError = false) {
+    const note = document.getElementById("authNote");
+    if (!note)
+        return;
+    note.textContent = msg;
+    note.style.color = isError ? "#ef4444" : "var(--muted)";
+}
+function setButtonsDisabled(disabled) {
+    document.getElementById("loginBtn")?.toggleAttribute("disabled", disabled);
+    document.getElementById("signupBtn")?.toggleAttribute("disabled", disabled);
+    document.getElementById("forgotBtn")?.toggleAttribute("disabled", disabled);
+}
+// ==============================
+// App logic (calendar / entries)
+// ==============================
+// ----------- Helpers -----------
 function parseTime(str) {
     const parts = str.split(":");
     const h = Number(parts[0]);
     const m = Number(parts[1]);
-    if (!Number.isFinite(h) || !Number.isFinite(m)) {
+    if (!Number.isFinite(h) || !Number.isFinite(m))
         throw new Error("Invalid time format");
-    }
     return h * 60 + m;
 }
 function formatTime(minutes) {
@@ -43,10 +66,10 @@ function formatTime(minutes) {
     const m = (minutes % 60).toString().padStart(2, "0");
     return `${h}:${m}`;
 }
-// Night bonus minutes: 20:00–06:00, subtracting pause (placed mid-shift)
+// Night bonus minutes: 20:00–06:00 (pause placed mid‑shift)
 function calcNightMinutes(start, end, pauseMin) {
     if (end < start)
-        end += 1440; // overnight shift
+        end += 1440; // overnight
     const totalWorked = end - start;
     if (totalWorked <= 0)
         return 0;
@@ -61,25 +84,6 @@ function calcNightMinutes(start, end, pauseMin) {
             nightMinutes++;
     }
     return nightMinutes;
-}
-// ----------- Auth helpers (Supabase is injected via HTML) -----------
-async function getCurrentUser() {
-    const { data } = await window.supabase.auth.getUser();
-    return data.user ? { id: data.user.id } : null;
-}
-async function signInWithEmail(email) {
-    const { error } = await window.supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: location.href }
-    });
-    if (error)
-        throw error;
-}
-function onAuthStateChanged(handler) {
-    const supabase = window.supabase;
-    supabase.auth.onAuthStateChange(async () => {
-        handler(await getCurrentUser());
-    });
 }
 // ----------- Cloud storage (Supabase) -----------
 let currentUserId = null;
@@ -123,14 +127,13 @@ async function deleteEntryByDate(dateISO) {
     if (!currentUserId)
         return;
     const { error } = await window.supabase
-        .from("entries")
-        .delete()
+        .from("entries").delete()
         .eq("user_id", currentUserId)
         .eq("date", dateISO);
     if (error)
         throw error;
 }
-// Vacation allowance per year (still local for now; easy to move to DB later)
+// Vacation allowance (localStorage for now)
 function loadAllowance() {
     const raw = localStorage.getItem("vacAllowance");
     const n = raw ? parseInt(raw) : 30;
@@ -139,16 +142,14 @@ function loadAllowance() {
 function saveAllowance(n) {
     localStorage.setItem("vacAllowance", String(n));
 }
-// ----------- DOM Setup -----------
+// ----------- DOM -----------
 const form = document.getElementById("workForm");
 const dayType = document.getElementById("dayType");
 const timeInputs = document.getElementById("timeInputs");
 const workedTime = document.getElementById("workedTime");
 const nightTime = document.getElementById("nightTime");
 const infoMessage = document.getElementById("infoMessage");
-// History table (may not exist if you switched to calendar view)
 const historyTable = document.querySelector("#historyTable tbody");
-// Summary DOM (separate month + year)
 const monthOnly = document.getElementById("monthOnly");
 const yearPicker = document.getElementById("yearPicker");
 const vacAllowanceInput = document.getElementById("vacAllowance");
@@ -162,9 +163,12 @@ const sumVacUsed = document.getElementById("sumVacUsed");
 const sumVacRemaining = document.getElementById("sumVacRemaining");
 // Auth/UI bits
 const loginCard = document.getElementById("loginCard");
-const loginBtn = document.getElementById("loginBtn");
-const loginEmail = document.getElementById("loginEmail");
 const signOutBtn = document.getElementById("signOutBtn");
+const emailEl = document.getElementById("loginEmail");
+const passEl = document.getElementById("loginPassword");
+const signupBtn = document.getElementById("signupBtn");
+const loginBtn = document.getElementById("loginBtn");
+const forgotBtn = document.getElementById("forgotBtn");
 // Date quick controls
 const workDateInput = document.getElementById("workDate");
 const openCalendarBtn = document.getElementById("openCalendarBtn");
@@ -183,7 +187,7 @@ const drawerDate = document.getElementById("drawerDate");
 const drawerBody = document.getElementById("drawerBody");
 const drawerEdit = document.getElementById("drawerEdit");
 const drawerDelete = document.getElementById("drawerDelete");
-// Year dropdown grid (optional; works if present in HTML)
+// Year dropdown grid (optional)
 const yearDropdownBtn = document.getElementById("yearDropdownBtn");
 const yearDropdown = document.getElementById("yearDropdown");
 const yearLabel = document.getElementById("yearLabel");
@@ -259,7 +263,6 @@ async function renderHistory() {
 }
 // ----------- Summary Rendering (uses entriesCache) -----------
 async function renderSummary() {
-    // Fallbacks if somehow empty (won't override our forced init)
     if (!yearPicker.value)
         yearPicker.value = String(new Date().getFullYear());
     if (!monthOnly.value)
@@ -296,11 +299,10 @@ function fmtDate(d) {
 function parseISO(dateStr) {
     const parts = dateStr.split("-");
     const y = Number(parts[0]);
-    const m = Number(parts[1]); // 1–12
+    const m = Number(parts[1]);
     const d = Number(parts[2]);
-    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d))
         throw new Error("Invalid date format");
-    }
     return new Date(y, m - 1, d);
 }
 function shiftDate(dateStr, deltaDays) {
@@ -308,26 +310,16 @@ function shiftDate(dateStr, deltaDays) {
     dt.setDate(dt.getDate() + deltaDays);
     return fmtDate(dt);
 }
-// Default date to today if empty
 if (!workDateInput.value)
     workDateInput.value = fmtDate(new Date());
-// Open native date picker (Chromium), or focus fallback
 openCalendarBtn?.addEventListener("click", () => {
     workDateInput.showPicker?.() ?? workDateInput.focus();
 });
-todayBtn?.addEventListener("click", () => {
-    workDateInput.value = fmtDate(new Date());
-});
-yesterdayBtn?.addEventListener("click", () => {
-    workDateInput.value = shiftDate(workDateInput.value, -1);
-});
-minusDayBtn?.addEventListener("click", () => {
-    workDateInput.value = shiftDate(workDateInput.value, -1);
-});
-plusDayBtn?.addEventListener("click", () => {
-    workDateInput.value = shiftDate(workDateInput.value, +1);
-});
-// Month nav helpers
+todayBtn?.addEventListener("click", () => { workDateInput.value = fmtDate(new Date()); });
+yesterdayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, -1); });
+minusDayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, -1); });
+plusDayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, +1); });
+// Month nav
 function shiftMonth(year, month, delta) {
     let y = year;
     let m = month + delta;
@@ -357,7 +349,6 @@ nextMonthBtn?.addEventListener("click", async () => {
     monthOnly.value = next.m.toString().padStart(2, "0");
     await renderSummary();
 });
-// Update summary when month/year changes
 monthOnly?.addEventListener("change", () => { renderSummary(); });
 yearPicker?.addEventListener("change", () => {
     renderSummary();
@@ -366,7 +357,7 @@ yearPicker?.addEventListener("change", () => {
 });
 // ----------- Calendar rendering & drawer -----------
 function daysInMonth(year, month1to12) {
-    return new Date(year, month1to12, 0).getDate(); // month is 1–12 here
+    return new Date(year, month1to12, 0).getDate();
 }
 function firstWeekdayIndexMonFirst(year, month1to12) {
     const d = new Date(year, month1to12 - 1, 1).getDay();
@@ -387,7 +378,7 @@ function renderCalendar() {
         return;
     const y = parseInt(yearPicker.value) || new Date().getFullYear();
     const mStr = monthOnly.value || (new Date().getMonth() + 1).toString().padStart(2, "0");
-    const m = parseInt(mStr); // 1..12
+    const m = parseInt(mStr);
     const map = entryMapByDate();
     const todayISO = fmtDate(new Date());
     const days = daysInMonth(y, m);
@@ -399,14 +390,13 @@ function renderCalendar() {
     const nextMonth = m === 12 ? 1 : m + 1;
     const nextYear = m === 12 ? y + 1 : y;
     calendarGrid.innerHTML = "";
-    // Helper to build a day cell
     const makeCell = (dateISO, inMonth) => {
         const cell = document.createElement("button");
         cell.type = "button";
         cell.className = "cal-day";
         if (!inMonth)
             cell.classList.add("outside");
-        const dow = new Date(dateISO).getDay(); // 0=Sun..6=Sat
+        const dow = new Date(dateISO).getDay();
         if (dow === 0 || dow === 6)
             cell.classList.add("weekend");
         if (dateISO === todayISO)
@@ -422,9 +412,7 @@ function renderCalendar() {
         if (e) {
             const type = document.createElement("span");
             type.className = `badge type-${e.type}`;
-            type.textContent =
-                e.type === "normal" ? "Normal" :
-                    e.type === "vacation" ? "Vacation" : "Sick";
+            type.textContent = e.type === "normal" ? "Normal" : e.type === "vacation" ? "Vacation" : "Sick";
             badges.appendChild(type);
             if (e.type === "normal") {
                 const w = document.createElement("span");
@@ -446,22 +434,18 @@ function renderCalendar() {
             badges.appendChild(add);
         }
         cell.appendChild(badges);
-        // click → open drawer
         cell.addEventListener("click", () => openDayDrawer(dateISO, e ?? null));
         return cell;
     };
-    // Leading days
     for (let i = leading - 1; i >= 0; i--) {
         const day = prevDays - i;
         const dateISO = `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
         calendarGrid.appendChild(makeCell(dateISO, false));
     }
-    // Current month
     for (let d = 1; d <= days; d++) {
         const dateISO = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
         calendarGrid.appendChild(makeCell(dateISO, true));
     }
-    // Trailing days
     for (let d = 1; d <= trailing; d++) {
         const dateISO = `${nextYear}-${String(nextMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
         calendarGrid.appendChild(makeCell(dateISO, false));
@@ -476,12 +460,11 @@ function openDayDrawer(dateISO, entry) {
     drawerDate.textContent = dateISO;
     if (entry) {
         const typeLabel = entry.type === "normal" ? "Normal" : entry.type === "vacation" ? "Vacation" : "Sick Leave";
-        const rows = [
+        drawerBody.innerHTML = [
             `<p><strong>Type:</strong> ${typeLabel}</p>`,
             `<p><strong>Worked:</strong> ${formatTime(entry.workedMinutes)}</p>`,
             `<p><strong>Night bonus:</strong> ${formatTime(entry.nightMinutes)}</p>`
         ].join("");
-        drawerBody.innerHTML = rows;
         drawerDelete.style.display = "";
         drawerEdit.textContent = "Edit";
     }
@@ -498,13 +481,9 @@ function closeDayDrawer() {
     dayDrawer.setAttribute("aria-hidden", "true");
     drawerSelectedDate = null;
 }
-// Drawer events
 drawerClose?.addEventListener("click", closeDayDrawer);
-dayDrawer?.addEventListener("click", (e) => {
-    if (e.target === dayDrawer)
-        closeDayDrawer(); // click backdrop
-});
-// Drawer actions
+dayDrawer?.addEventListener("click", (e) => { if (e.target === dayDrawer)
+    closeDayDrawer(); });
 drawerEdit?.addEventListener("click", () => {
     if (!drawerSelectedDate)
         return;
@@ -524,7 +503,7 @@ drawerDelete?.addEventListener("click", async () => {
     await renderHistory();
     await renderSummary();
 });
-// ----------- Year dropdown grid (optional) -----------
+// Year dropdown grid (optional)
 let baseYear = Math.floor((parseInt(yearPicker.value) || new Date().getFullYear()) / 10) * 10;
 function renderYearGrid() {
     if (!yearGrid || !yearRangeLabel)
@@ -569,30 +548,19 @@ yearDropdownBtn?.addEventListener("click", (e) => {
     else
         closeYearDropdown();
 });
-prevDecadeBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    baseYear -= 16;
-    renderYearGrid();
-});
-nextDecadeBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    baseYear += 16;
-    renderYearGrid();
-});
+prevDecadeBtn?.addEventListener("click", (e) => { e.stopPropagation(); baseYear -= 16; renderYearGrid(); });
+nextDecadeBtn?.addEventListener("click", (e) => { e.stopPropagation(); baseYear += 16; renderYearGrid(); });
 document.addEventListener("click", (e) => {
     if (!yearDropdown || !yearDropdownBtn)
         return;
     if (!yearDropdown.hidden) {
         const target = e.target;
-        if (!yearDropdown.contains(target) && target !== yearDropdownBtn) {
+        if (!yearDropdown.contains(target) && target !== yearDropdownBtn)
             closeYearDropdown();
-        }
     }
 });
-document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape")
-        closeYearDropdown();
-});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape")
+    closeYearDropdown(); });
 // ----------- UI Events -----------
 dayType.addEventListener("change", () => {
     timeInputs.style.display = dayType.value === "normal" ? "block" : "none";
@@ -601,10 +569,8 @@ form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const type = document.getElementById("dayType").value;
     const date = document.getElementById("workDate").value;
-    if (!date) {
-        alert("Please choose a date.");
-        return;
-    }
+    if (!date)
+        return alert("Please choose a date.");
     if (type !== "normal") {
         const entry = { date, type, workedMinutes: 480, nightMinutes: 0 };
         await upsertEntry(entry);
@@ -619,22 +585,15 @@ form.addEventListener("submit", async (e) => {
     const startStr = document.getElementById("startTime").value;
     const endStr = document.getElementById("endTime").value;
     const pauseMin = parseInt(document.getElementById("pauseTime").value) || 0;
-    if (!startStr || !endStr) {
-        alert("Please fill in both start and end time.");
-        return;
-    }
+    if (!startStr || !endStr)
+        return alert("Please fill in both start and end time.");
     const startMin = parseTime(startStr);
     const endMin = parseTime(endStr);
     let totalWorkMin = endMin - startMin - pauseMin;
     if (totalWorkMin < 0)
         totalWorkMin += 1440;
     const nightMin = calcNightMinutes(startMin, endMin, pauseMin);
-    const entry = {
-        date,
-        type,
-        workedMinutes: totalWorkMin,
-        nightMinutes: nightMin
-    };
+    const entry = { date, type, workedMinutes: totalWorkMin, nightMinutes: nightMin };
     await upsertEntry(entry);
     await refreshEntries();
     await renderHistory();
@@ -645,94 +604,113 @@ form.addEventListener("submit", async (e) => {
 });
 saveAllowanceBtn?.addEventListener("click", async () => {
     const n = parseInt(vacAllowanceInput.value);
-    if (!Number.isFinite(n) || n < 0) {
-        alert("Please enter a valid non-negative number.");
-        return;
-    }
+    if (!Number.isFinite(n) || n < 0)
+        return alert("Please enter a valid non-negative number.");
     saveAllowance(n);
     await renderSummary();
 });
-// ----------- Auth UI wiring -----------
+// ----------- Auth UI toggle -----------
 function showLogin(show) {
     const appSection = document.getElementById("tracker");
+    const calSection = document.getElementById("calendarSection");
+    const summarySection = document.getElementById("summarySection");
     if (loginCard)
         loginCard.style.display = show ? "block" : "none";
     if (appSection)
         appSection.style.display = show ? "none" : "block";
+    if (calSection)
+        calSection.style.display = show ? "none" : "block";
+    if (summarySection)
+        summarySection.style.display = show ? "none" : "block";
+    if (signOutBtn)
+        signOutBtn.style.display = show ? "none" : "inline-flex";
 }
+// --- After-login bootstrap (flip UI immediately, no waiting) ---
+async function afterLoginBoot() {
+    const u = await getCurrentUser();
+    if (!u)
+        return; // e.g., account not confirmed yet
+    currentUserId = u.id;
+    showLogin(false);
+    setMonthYearToToday();
+    await refreshEntries();
+    await renderHistory();
+    await renderSummary();
+}
+// ----------- Auth wiring -----------
 function wireLoginUI() {
-    const emailEl = document.getElementById("loginEmail");
-    const passEl = document.getElementById("loginPassword");
-    const signup = document.getElementById("signupBtn");
-    const login = document.getElementById("loginBtn");
-    const magic = document.getElementById("magicBtn");
-    const forgot = document.getElementById("forgotBtn");
-    if (signup)
-        signup.onclick = async () => {
+    if (signupBtn)
+        signupBtn.onclick = async () => {
             try {
                 const email = (emailEl?.value ?? "").trim();
                 const pass = (passEl?.value ?? "").trim();
                 if (!email || !pass)
-                    return alert("Enter email and password");
+                    return setAuthNote("Enter email and password", true);
+                setButtonsDisabled(true);
+                setAuthNote("Creating your account...");
                 await signUpWithPassword(email, pass);
-                alert("Account created. Check your email if confirmation is required.");
+                setAuthNote("We sent you a confirmation email. Verify, then sign in.");
             }
             catch (e) {
-                alert(e.message ?? "Sign up failed");
+                setAuthNote(e?.message || "Sign up failed", true);
+            }
+            finally {
+                setButtonsDisabled(false);
             }
         };
-    if (login)
-        login.onclick = async () => {
+    if (loginBtn)
+        loginBtn.onclick = async () => {
             try {
                 const email = (emailEl?.value ?? "").trim();
                 const pass = (passEl?.value ?? "").trim();
                 if (!email || !pass)
-                    return alert("Enter email and password");
+                    return setAuthNote("Enter email and password", true);
+                setButtonsDisabled(true);
+                setAuthNote("Signing you in...");
                 await signInWithPassword(email, pass);
-                // onAuthStateChange will switch the UI
+                await afterLoginBoot();
+                const u = await getCurrentUser();
+                if (!u)
+                    setAuthNote("Account not confirmed yet. Check your email.", true);
+                else
+                    setAuthNote("");
             }
             catch (e) {
-                alert(e.message ?? "Sign in failed");
+                setAuthNote(e?.message || "Sign in failed", true);
+            }
+            finally {
+                setButtonsDisabled(false);
             }
         };
-    if (magic)
-        magic.onclick = async () => {
+    if (forgotBtn)
+        forgotBtn.onclick = async () => {
             try {
                 const email = (emailEl?.value ?? "").trim();
                 if (!email)
-                    return alert("Enter your email");
-                await signInWithEmail(email);
-                alert("Magic link sent. Check your email.");
-            }
-            catch (e) {
-                alert(e.message ?? "Magic link failed");
-            }
-        };
-    if (forgot)
-        forgot.onclick = async () => {
-            try {
-                const email = (emailEl?.value ?? "").trim();
-                if (!email)
-                    return alert("Enter your email");
+                    return setAuthNote("Enter your email first", true);
+                setButtonsDisabled(true);
+                setAuthNote("Sending reset email...");
                 await sendPasswordReset(email);
-                alert("Password reset link sent. Check your email.");
+                setAuthNote("Password reset link sent. Check your email.");
             }
             catch (e) {
-                alert(e.message ?? "Reset link failed");
+                setAuthNote(e?.message || "Reset link failed", true);
+            }
+            finally {
+                setButtonsDisabled(false);
             }
         };
-    const signOutBtn = document.getElementById("signOutBtn");
     if (signOutBtn) {
         signOutBtn.onclick = async () => {
             await window.supabase.auth.signOut();
+            // onAuthStateChanged will flip the UI
         };
     }
 }
 // ----------- Initial Setup -----------
 async function init() {
     wireLoginUI();
-    // If user clicked a password reset email link, Supabase creates a session
-    // and we can ask for the new password once (simple prompt).
+    // Recovery flow (after reset email)
     const hash = location.hash || "";
     if (hash.includes("type=recovery")) {
         const newPass = prompt("Set a new password:");
@@ -749,26 +727,22 @@ async function init() {
     const user = await getCurrentUser();
     if (!user) {
         showLogin(true);
-        return;
     }
-    currentUserId = user.id;
-    showLogin(false);
-    setMonthYearToToday();
-    await refreshEntries();
-    await renderHistory();
-    await renderSummary();
+    else {
+        currentUserId = user.id;
+        await afterLoginBoot();
+    }
+    // Stay in sync if session changes elsewhere
     onAuthStateChanged(async (u) => {
         if (!u) {
             currentUserId = null;
             entriesCache = [];
             showLogin(true);
+            setAuthNote("");
         }
         else {
             currentUserId = u.id;
-            showLogin(false);
-            await refreshEntries();
-            await renderHistory();
-            await renderSummary();
+            await afterLoginBoot();
         }
     });
 }

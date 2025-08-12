@@ -15,26 +15,31 @@
           <li><a href="todoapp.html">📝 ToDoApp</a></li>
           <li><a href="tracker.html">⏱ Work Tracker</a></li>
           <li><a href="contact.html">📫 Contact</a></li>
+          
         </ul>
+        <button id="signOutBtn" class="nav-signout" style="display:none;" title="Sign out">↩︎ Sign out</button>
         <button id="themeToggle">🌓</button>
       </div>
     </nav>
 
     <main>
-      <!-- LOGIN (visible by default) -->
-      <section id="loginCard" style="max-width:520px; margin:1rem auto;">
+      <section id="loginCard" class="auth-card" style="display:none;">
         <h2>Sign in</h2>
-        <div class="input-row" style="display:grid; gap:.5rem;">
-          <input id="loginEmail" type="email" placeholder="you@example.com" />
-          <input id="loginPassword" type="password" placeholder="Password" />
-          <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
-            <button id="signupBtn" type="button">Create account</button>
-            <button id="loginBtn" type="button">Sign in</button>
-            <button id="magicBtn" type="button">Email magic link</button>
-            <button id="forgotBtn" type="button" style="margin-left:auto;">Forgot password</button>
-          </div>
+
+        <div class="auth-fields">
+          <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+          <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" />
         </div>
+
+        <div class="auth-actions">
+          <button id="loginBtn" class="btn-primary" type="button">Sign in</button>
+          <button id="signupBtn" class="btn-secondary" type="button">Create account</button>
+          <button id="forgotBtn" class="btn-ghost" type="button">Forgot password</button>
+        </div>
+
+        <p id="authNote" class="auth-note"></p>
       </section>
+
       <!-- APP (hidden until authenticated) -->
       <section id="tracker" style="display:none">
         <h1>🚚 Work Time Tracker</h1>
@@ -168,6 +173,7 @@
   </div>
 
   <!-- Supabase config & client MUST load before your app -->
+
   <script src="supabase-config.js"></script>
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";

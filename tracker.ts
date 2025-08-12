@@ -10,39 +10,26 @@ async function signUpWithPassword(email: string, password: string) {
   if (error) throw error;
   return data;
 }
-
 async function signInWithPassword(email: string, password: string) {
   const { data, error } = await (window as any).supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data;
 }
-
-async function signInWithEmail(email: string) {
-  const { error } = await (window as any).supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: location.href }
-  });
-  if (error) throw error;
-}
-
 async function sendPasswordReset(email: string) {
   const { error } = await (window as any).supabase.auth.resetPasswordForEmail(email, {
     redirectTo: location.origin + location.pathname
   });
   if (error) throw error;
 }
-
 async function finishPasswordReset(newPassword: string) {
   const { data, error } = await (window as any).supabase.auth.updateUser({ password: newPassword });
   if (error) throw error;
   return data;
 }
-
 async function getCurrentUser(): Promise<SBUser> {
   const { data } = await (window as any).supabase.auth.getUser();
   return data.user ? { id: data.user.id } : null;
 }
-
 function onAuthStateChanged(handler: (u: SBUser) => void) {
   const supabase = (window as any).supabase;
   supabase.auth.onAuthStateChange(async () => {
@@ -50,7 +37,24 @@ function onAuthStateChanged(handler: (u: SBUser) => void) {
   });
 }
 
-// ----------- Time utils -----------
+// ----------- Small UI helpers for auth -----------
+function setAuthNote(msg: string, isError = false) {
+  const note = document.getElementById("authNote") as HTMLParagraphElement | null;
+  if (!note) return;
+  note.textContent = msg;
+  note.style.color = isError ? "#ef4444" : "var(--muted)";
+}
+function setButtonsDisabled(disabled: boolean) {
+  (document.getElementById("loginBtn") as HTMLButtonElement | null)?.toggleAttribute("disabled", disabled);
+  (document.getElementById("signupBtn") as HTMLButtonElement | null)?.toggleAttribute("disabled", disabled);
+  (document.getElementById("forgotBtn") as HTMLButtonElement | null)?.toggleAttribute("disabled", disabled);
+}
+
+// ==============================
+// App logic (calendar / entries)
+// ==============================
+
+// ----------- Helpers -----------
 function parseTime(str: string): number {
   const parts = str.split(":");
   const h = Number(parts[0]);
@@ -58,16 +62,14 @@ function parseTime(str: string): number {
   if (!Number.isFinite(h) || !Number.isFinite(m)) throw new Error("Invalid time format");
   return h * 60 + m;
 }
-
 function formatTime(minutes: number): string {
   const h = Math.floor(minutes / 60).toString().padStart(2, "0");
   const m = (minutes % 60).toString().padStart(2, "0");
   return `${h}:${m}`;
 }
-
-// Night bonus minutes: 20:00–06:00, subtracting pause (placed mid-shift)
+// Night bonus minutes: 20:00–06:00 (pause placed mid‑shift)
 function calcNightMinutes(start: number, end: number, pauseMin: number): number {
-  if (end < start) end += 1440; // overnight shift
+  if (end < start) end += 1440; // overnight
   const totalWorked = end - start;
   if (totalWorked <= 0) return 0;
 
@@ -112,7 +114,6 @@ async function refreshEntries(): Promise<void> {
     nightMinutes: r.night_minutes
   }));
 }
-
 async function upsertEntry(entry: Entry): Promise<void> {
   if (!currentUserId) return;
   const { error } = await (window as any).supabase.from("entries").upsert({
@@ -124,18 +125,16 @@ async function upsertEntry(entry: Entry): Promise<void> {
   });
   if (error) throw error;
 }
-
 async function deleteEntryByDate(dateISO: string): Promise<void> {
   if (!currentUserId) return;
   const { error } = await (window as any).supabase
-    .from("entries")
-    .delete()
+    .from("entries").delete()
     .eq("user_id", currentUserId)
     .eq("date", dateISO);
   if (error) throw error;
 }
 
-// Vacation allowance (local for now)
+// Vacation allowance (localStorage for now)
 function loadAllowance(): number {
   const raw = localStorage.getItem("vacAllowance");
   const n = raw ? parseInt(raw) : 30;
@@ -145,7 +144,7 @@ function saveAllowance(n: number) {
   localStorage.setItem("vacAllowance", String(n));
 }
 
-// ----------- DOM Setup -----------
+// ----------- DOM -----------
 const form = document.getElementById("workForm") as HTMLFormElement;
 const dayType = document.getElementById("dayType") as HTMLSelectElement;
 const timeInputs = document.getElementById("timeInputs") as HTMLDivElement;
@@ -171,6 +170,12 @@ const sumVacRemaining = document.getElementById("sumVacRemaining") as HTMLSpanEl
 
 // Auth/UI bits
 const loginCard = document.getElementById("loginCard") as HTMLDivElement | null;
+const signOutBtn = document.getElementById("signOutBtn") as HTMLButtonElement | null;
+const emailEl = document.getElementById("loginEmail") as HTMLInputElement | null;
+const passEl  = document.getElementById("loginPassword") as HTMLInputElement | null;
+const signupBtn  = document.getElementById("signupBtn") as HTMLButtonElement | null;
+const loginBtn   = document.getElementById("loginBtn") as HTMLButtonElement | null;
+const forgotBtn  = document.getElementById("forgotBtn") as HTMLButtonElement | null;
 
 // Date quick controls
 const workDateInput = document.getElementById("workDate") as HTMLInputElement;
@@ -207,14 +212,11 @@ function setMonthYearToToday(): void {
   const now = new Date();
   const y = String(now.getFullYear());
   const m = String(now.getMonth() + 1).padStart(2, "0");
-
   yearPicker.value = y;
 
-  if (monthOnly) {
-    const idx = Array.from(monthOnly.options).findIndex(o => o.value === m);
-    if (idx >= 0) monthOnly.selectedIndex = idx;
-    monthOnly.value = m;
-  }
+  const idx = Array.from(monthOnly.options).findIndex(o => o.value === m);
+  if (idx >= 0) monthOnly.selectedIndex = idx;
+  monthOnly.value = m;
 
   if (yearLabel) yearLabel.textContent = y;
 }
@@ -244,6 +246,7 @@ async function renderHistory(): Promise<void> {
     `;
     historyTable.appendChild(row);
 
+    // Delete
     row.querySelector<HTMLButtonElement>(".delete-btn")?.addEventListener("click", async () => {
       await deleteEntryByDate(entry.date);
       await refreshEntries();
@@ -251,6 +254,7 @@ async function renderHistory(): Promise<void> {
       await renderSummary();
     });
 
+    // Edit (prefill form)
     row.querySelector<HTMLButtonElement>(".edit-btn")?.addEventListener("click", () => {
       const formDate = document.getElementById("workDate") as HTMLInputElement;
       const formType = document.getElementById("dayType") as HTMLSelectElement;
@@ -281,8 +285,8 @@ async function renderSummary(): Promise<void> {
   if (!yearPicker.value) yearPicker.value = String(new Date().getFullYear());
   if (!monthOnly.value) monthOnly.value = (new Date().getMonth() + 1).toString().padStart(2, "0");
 
-  const monthKey = `${yearPicker.value}-${monthOnly.value}`;
-  const yearKey = yearPicker.value;
+  const monthKey = `${yearPicker.value}-${monthOnly.value}`; // YYYY-MM
+  const yearKey = yearPicker.value;                           // YYYY
 
   const monthEntries = entriesCache.filter(e => e.date.slice(0, 7) === monthKey);
   const yearEntries = entriesCache.filter(e => e.date.slice(0, 4) === yearKey);
@@ -318,7 +322,6 @@ function fmtDate(d: Date): string {
   const day = d.getDate().toString().padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
-
 function parseISO(dateStr: string): Date {
   const parts = dateStr.split("-");
   const y = Number(parts[0]);
@@ -327,17 +330,13 @@ function parseISO(dateStr: string): Date {
   if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) throw new Error("Invalid date format");
   return new Date(y, m - 1, d);
 }
-
 function shiftDate(dateStr: string, deltaDays: number): string {
   const dt = dateStr ? parseISO(dateStr) : new Date();
   dt.setDate(dt.getDate() + deltaDays);
   return fmtDate(dt);
 }
-
-// Default date to today if empty
 if (!workDateInput.value) workDateInput.value = fmtDate(new Date());
 
-// Date picker helpers
 openCalendarBtn?.addEventListener("click", () => {
   (workDateInput as any).showPicker?.() ?? workDateInput.focus();
 });
@@ -346,7 +345,7 @@ yesterdayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(
 minusDayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, -1); });
 plusDayBtn?.addEventListener("click", () => { workDateInput.value = shiftDate(workDateInput.value, +1); });
 
-// Month nav helpers
+// Month nav
 function shiftMonth(year: number, month: number, delta: number): { y: number; m: number } {
   let y = year;
   let m = month + delta;
@@ -354,7 +353,6 @@ function shiftMonth(year: number, month: number, delta: number): { y: number; m:
   if (m > 12) { m = 1; y++; }
   return { y, m };
 }
-
 prevMonthBtn?.addEventListener("click", async () => {
   const y = parseInt(yearPicker.value) || new Date().getFullYear();
   const m = parseInt(monthOnly.value) || (new Date().getMonth() + 1);
@@ -363,7 +361,6 @@ prevMonthBtn?.addEventListener("click", async () => {
   monthOnly.value = next.m.toString().padStart(2, "0");
   await renderSummary();
 });
-
 nextMonthBtn?.addEventListener("click", async () => {
   const y = parseInt(yearPicker.value) || new Date().getFullYear();
   const m = parseInt(monthOnly.value) || (new Date().getMonth() + 1);
@@ -372,8 +369,6 @@ nextMonthBtn?.addEventListener("click", async () => {
   monthOnly.value = next.m.toString().padStart(2, "0");
   await renderSummary();
 });
-
-// Update summary when month/year changes
 monthOnly?.addEventListener("change", () => { renderSummary(); });
 yearPicker?.addEventListener("change", () => {
   renderSummary();
@@ -386,14 +381,13 @@ function daysInMonth(year: number, month1to12: number): number {
 }
 function firstWeekdayIndexMonFirst(year: number, month1to12: number): number {
   const d = new Date(year, month1to12 - 1, 1).getDay();
-  return (d + 6) % 7; // Mon=0..Sun=6
+  return (d + 6) % 7;
 }
 function entryMapByDate(): Record<string, Entry> {
   const map: Record<string, Entry> = {};
   for (const e of entriesCache) map[e.date] = e;
   return map;
 }
-
 function renderCalendar(): void {
   if (!yearPicker.value) yearPicker.value = String(new Date().getFullYear());
   if (!monthOnly.value) monthOnly.value = String(new Date().getMonth() + 1).padStart(2, "0");
@@ -401,7 +395,7 @@ function renderCalendar(): void {
 
   const y = parseInt(yearPicker.value) || new Date().getFullYear();
   const mStr = monthOnly.value || (new Date().getMonth() + 1).toString().padStart(2, "0");
-  const m = parseInt(mStr); // 1..12
+  const m = parseInt(mStr);
 
   const map = entryMapByDate();
   const todayISO = fmtDate(new Date());
@@ -470,20 +464,17 @@ function renderCalendar(): void {
     return cell;
   };
 
-  // Leading
   for (let i = leading - 1; i >= 0; i--) {
     const day = prevDays - i;
-    const dateISO = `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dateISO = `${prevYear}-${String(prevMonth).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
     calendarGrid.appendChild(makeCell(dateISO, false));
   }
-  // Current month
   for (let d = 1; d <= days; d++) {
-    const dateISO = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dateISO = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     calendarGrid.appendChild(makeCell(dateISO, true));
   }
-  // Trailing
   for (let d = 1; d <= trailing; d++) {
-    const dateISO = `${nextYear}-${String(nextMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dateISO = `${nextYear}-${String(nextMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     calendarGrid.appendChild(makeCell(dateISO, false));
   }
 }
@@ -493,18 +484,16 @@ let drawerSelectedDate: string | null = null;
 
 function openDayDrawer(dateISO: string, entry: Entry | null) {
   if (!dayDrawer || !drawerDate || !drawerBody || !drawerEdit || !drawerDelete) return;
-
   drawerSelectedDate = dateISO;
   drawerDate.textContent = dateISO;
 
   if (entry) {
     const typeLabel = entry.type === "normal" ? "Normal" : entry.type === "vacation" ? "Vacation" : "Sick Leave";
-    const rows = [
+    drawerBody.innerHTML = [
       `<p><strong>Type:</strong> ${typeLabel}</p>`,
       `<p><strong>Worked:</strong> ${formatTime(entry.workedMinutes)}</p>`,
       `<p><strong>Night bonus:</strong> ${formatTime(entry.nightMinutes)}</p>`
     ].join("");
-    drawerBody.innerHTML = rows;
     drawerDelete.style.display = "";
     drawerEdit.textContent = "Edit";
   } else {
@@ -512,23 +501,16 @@ function openDayDrawer(dateISO: string, entry: Entry | null) {
     drawerDelete.style.display = "none";
     drawerEdit.textContent = "Add";
   }
-
   dayDrawer.setAttribute("aria-hidden", "false");
 }
-
 function closeDayDrawer() {
   if (!dayDrawer) return;
   dayDrawer.setAttribute("aria-hidden", "true");
   drawerSelectedDate = null;
 }
-
-// Drawer events
 drawerClose?.addEventListener("click", closeDayDrawer);
-dayDrawer?.addEventListener("click", (e) => {
-  if (e.target === dayDrawer) closeDayDrawer();
-});
+dayDrawer?.addEventListener("click", (e) => { if (e.target === dayDrawer) closeDayDrawer(); });
 
-// Drawer actions
 drawerEdit?.addEventListener("click", () => {
   if (!drawerSelectedDate) return;
   (document.getElementById("workDate") as HTMLInputElement).value = drawerSelectedDate;
@@ -538,7 +520,6 @@ drawerEdit?.addEventListener("click", () => {
   closeDayDrawer();
   document.getElementById("workForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
-
 drawerDelete?.addEventListener("click", async () => {
   if (!drawerSelectedDate) return;
   await deleteEntryByDate(drawerSelectedDate);
@@ -548,9 +529,8 @@ drawerDelete?.addEventListener("click", async () => {
   await renderSummary();
 });
 
-// ----------- Year dropdown grid (optional) -----------
+// Year dropdown grid (optional)
 let baseYear = Math.floor((parseInt(yearPicker.value) || new Date().getFullYear()) / 10) * 10;
-
 function renderYearGrid() {
   if (!yearGrid || !yearRangeLabel) return;
   const selectedYear = parseInt(yearPicker.value) || new Date().getFullYear();
@@ -572,7 +552,6 @@ function renderYearGrid() {
     yearGrid.appendChild(btn);
   }
 }
-
 function openYearDropdown() {
   if (!yearDropdownBtn || !yearDropdown) return;
   yearDropdown.hidden = false;
@@ -603,13 +582,11 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeYearD
 dayType.addEventListener("change", () => {
   timeInputs.style.display = dayType.value === "normal" ? "block" : "none";
 });
-
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const type = (document.getElementById("dayType") as HTMLSelectElement).value as Entry["type"];
   const date = (document.getElementById("workDate") as HTMLInputElement).value;
-
   if (!date) return alert("Please choose a date.");
 
   if (type !== "normal") {
@@ -627,7 +604,6 @@ form.addEventListener("submit", async (e) => {
   const startStr = (document.getElementById("startTime") as HTMLInputElement).value;
   const endStr = (document.getElementById("endTime") as HTMLInputElement).value;
   const pauseMin = parseInt((document.getElementById("pauseTime") as HTMLInputElement).value) || 0;
-
   if (!startStr || !endStr) return alert("Please fill in both start and end time.");
 
   const startMin = parseTime(startStr);
@@ -637,8 +613,8 @@ form.addEventListener("submit", async (e) => {
   if (totalWorkMin < 0) totalWorkMin += 1440;
 
   const nightMin = calcNightMinutes(startMin, endMin, pauseMin);
-
   const entry: Entry = { date, type, workedMinutes: totalWorkMin, nightMinutes: nightMin };
+
   await upsertEntry(entry);
   await refreshEntries();
   await renderHistory();
@@ -648,7 +624,6 @@ form.addEventListener("submit", async (e) => {
   nightTime.textContent = formatTime(nightMin);
   infoMessage.textContent = "Normal work day calculated.";
 });
-
 saveAllowanceBtn?.addEventListener("click", async () => {
   const n = parseInt(vacAllowanceInput.value);
   if (!Number.isFinite(n) || n < 0) return alert("Please enter a valid non-negative number.");
@@ -656,63 +631,93 @@ saveAllowanceBtn?.addEventListener("click", async () => {
   await renderSummary();
 });
 
-// ----------- Auth UI wiring -----------
+// ----------- Auth UI toggle -----------
 function showLogin(show: boolean) {
   const appSection = document.getElementById("tracker") as HTMLElement | null;
+  const calSection = document.getElementById("calendarSection") as HTMLElement | null;
+  const summarySection = document.getElementById("summarySection") as HTMLElement | null;
+
   if (loginCard) loginCard.style.display = show ? "block" : "none";
   if (appSection) appSection.style.display = show ? "none" : "block";
+  if (calSection) calSection.style.display = show ? "none" : "block";
+  if (summarySection) summarySection.style.display = show ? "none" : "block";
+
+  if (signOutBtn) signOutBtn.style.display = show ? "none" : "inline-flex";
 }
 
+// --- After-login bootstrap (flip UI immediately, no waiting) ---
+async function afterLoginBoot() {
+  const u = await getCurrentUser();
+  if (!u) return; // e.g., account not confirmed yet
+  currentUserId = u.id;
+  showLogin(false);
+  setMonthYearToToday();
+  await refreshEntries();
+  await renderHistory();
+  await renderSummary();
+}
+
+// ----------- Auth wiring -----------
 function wireLoginUI() {
-  const emailEl = document.getElementById("loginEmail") as HTMLInputElement | null;
-  const passEl  = document.getElementById("loginPassword") as HTMLInputElement | null;
-  const signup  = document.getElementById("signupBtn") as HTMLButtonElement | null;
-  const login   = document.getElementById("loginBtn") as HTMLButtonElement | null;
-  const magic   = document.getElementById("magicBtn") as HTMLButtonElement | null;
-  const forgot  = document.getElementById("forgotBtn") as HTMLButtonElement | null;
-
-  if (signup) signup.onclick = async () => {
+  if (signupBtn) signupBtn.onclick = async () => {
     try {
       const email = (emailEl?.value ?? "").trim();
       const pass  = (passEl?.value ?? "").trim();
-      if (!email || !pass) return alert("Enter email and password");
+      if (!email || !pass) return setAuthNote("Enter email and password", true);
+
+      setButtonsDisabled(true);
+      setAuthNote("Creating your account...");
       await signUpWithPassword(email, pass);
-      alert("Account created. Check your email if confirmation is required.");
-    } catch (e: any) { alert(e.message ?? "Sign up failed"); }
+      setAuthNote("We sent you a confirmation email. Verify, then sign in.");
+    } catch (e: any) {
+      setAuthNote(e?.message || "Sign up failed", true);
+    } finally {
+      setButtonsDisabled(false);
+    }
   };
 
-  if (login) login.onclick = async () => {
+  if (loginBtn) loginBtn.onclick = async () => {
     try {
       const email = (emailEl?.value ?? "").trim();
       const pass  = (passEl?.value ?? "").trim();
-      if (!email || !pass) return alert("Enter email and password");
+      if (!email || !pass) return setAuthNote("Enter email and password", true);
+
+      setButtonsDisabled(true);
+      setAuthNote("Signing you in...");
       await signInWithPassword(email, pass);
-      // onAuthStateChange will switch the UI
-    } catch (e: any) { alert(e.message ?? "Sign in failed"); }
+
+      await afterLoginBoot();
+
+      const u = await getCurrentUser();
+      if (!u) setAuthNote("Account not confirmed yet. Check your email.", true);
+      else setAuthNote("");
+    } catch (e: any) {
+      setAuthNote(e?.message || "Sign in failed", true);
+    } finally {
+      setButtonsDisabled(false);
+    }
   };
 
-  if (magic) magic.onclick = async () => {
+  if (forgotBtn) forgotBtn.onclick = async () => {
     try {
       const email = (emailEl?.value ?? "").trim();
-      if (!email) return alert("Enter your email");
-      await signInWithEmail(email);
-      alert("Magic link sent. Check your email.");
-    } catch (e: any) { alert(e.message ?? "Magic link failed"); }
-  };
+      if (!email) return setAuthNote("Enter your email first", true);
 
-  if (forgot) forgot.onclick = async () => {
-    try {
-      const email = (emailEl?.value ?? "").trim();
-      if (!email) return alert("Enter your email");
+      setButtonsDisabled(true);
+      setAuthNote("Sending reset email...");
       await sendPasswordReset(email);
-      alert("Password reset link sent. Check your email.");
-    } catch (e: any) { alert(e.message ?? "Reset link failed"); }
+      setAuthNote("Password reset link sent. Check your email.");
+    } catch (e: any) {
+      setAuthNote(e?.message || "Reset link failed", true);
+    } finally {
+      setButtonsDisabled(false);
+    }
   };
 
-  const signOutBtn = document.getElementById("signOutBtn") as HTMLButtonElement | null;
   if (signOutBtn) {
     signOutBtn.onclick = async () => {
       await (window as any).supabase.auth.signOut();
+      // onAuthStateChanged will flip the UI
     };
   }
 }
@@ -721,7 +726,7 @@ function wireLoginUI() {
 async function init() {
   wireLoginUI();
 
-  // Handle password recovery link
+  // Recovery flow (after reset email)
   const hash = location.hash || "";
   if (hash.includes("type=recovery")) {
     const newPass = prompt("Set a new password:");
@@ -729,7 +734,7 @@ async function init() {
       try {
         await finishPasswordReset(newPass);
         alert("Password updated. You are signed in.");
-      } catch (e: any) {
+      } catch (e:any) {
         alert(e.message ?? "Password update failed");
       }
     }
@@ -738,28 +743,21 @@ async function init() {
   const user = await getCurrentUser();
   if (!user) {
     showLogin(true);
-    return;
+  } else {
+    currentUserId = user.id;
+    await afterLoginBoot();
   }
 
-  currentUserId = user.id;
-  showLogin(false);
-
-  setMonthYearToToday();
-  await refreshEntries();
-  await renderHistory();
-  await renderSummary();
-
+  // Stay in sync if session changes elsewhere
   onAuthStateChanged(async (u) => {
     if (!u) {
       currentUserId = null;
       entriesCache = [];
       showLogin(true);
+      setAuthNote("");
     } else {
       currentUserId = u.id;
-      showLogin(false);
-      await refreshEntries();
-      await renderHistory();
-      await renderSummary();
+      await afterLoginBoot();
     }
   });
 }

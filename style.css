@@ -757,3 +757,100 @@ footer {
 .proj-card p{ margin:0; color: var(--muted); }
 .proj-cta{ margin-top:auto; font-weight:700; color: var(--text); opacity:.9; }
 
+/* ===== Auth Card ===== */
+.auth-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+  max-width: 520px;
+  width: 100%;
+  margin: 1rem auto 0;
+}
+
+.auth-card h2 {
+  margin: 0 0 0.8rem 0;
+  font-size: clamp(1.2rem, 1.2vw + 1rem, 1.6rem);
+  color: var(--text);
+}
+
+.auth-fields {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.auth-fields input[type="email"],
+.auth-fields input[type="password"] {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.auth-fields input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+/* Buttons */
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.nav-signout {
+  border-radius: 12px;
+  padding: 0.7rem 0.95rem;
+  cursor: pointer;
+  transition: opacity .15s ease, transform .06s ease, background .2s ease;
+  font-weight: 700;
+  border: 1px solid var(--border);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: transparent;
+}
+.btn-primary:hover { opacity: .92; }
+.btn-primary:active { transform: translateY(1px); }
+
+.btn-secondary {
+  background: var(--btn-bg);
+  color: var(--text);
+}
+.btn-secondary:hover { background: var(--btn-hover); }
+.btn-secondary:active { transform: translateY(1px); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+}
+.btn-ghost:hover { background: var(--btn-hover); }
+.btn-ghost:active { transform: translateY(1px); }
+
+/* Small status / errors */
+.auth-note {
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+/* Sign out in nav */
+.nav-signout {
+  margin-left: 0.5rem;
+  background: var(--btn-bg);
+  color: var(--text);
+}
+.nav-signout:hover { background: var(--btn-hover); }
+.nav-signout:active { transform: translateY(1px); }
